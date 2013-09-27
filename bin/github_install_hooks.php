@@ -9,7 +9,7 @@ if (file_exists('../config/projects_local.php')) {
   include('../config/projects.php');
 }
 
-if (!isset($_ENV['TOKEN'])) {
+if (!isset($_SERVER['TOKEN'])) {
   exit('You must provide a Github access token environment variable to install webhooks.');
 }
 if (!count($github_projects)) {
