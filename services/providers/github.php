@@ -8,10 +8,13 @@ if (file_exists('../config/projects_local.php')) {
   include('../config/projects.php');
 }
 include_once('../lib/restclient.php');
+include_once('../lib/json_store.php');
+include_once('../lib/status_store.php');
 
 class GithubClient extends RestClient
 {
   private $users;
+  private $statusDetailsKey;
   
   /*rest utility functions
    *TODO: move to base class
@@ -175,6 +178,14 @@ class GithubClient extends RestClient
     } else {
       array_unshift($parts, $messages['success']);
     }
+    
+    //save everything into status store so it can be provided at status 'details' url
+    $json_store = new JsonStore();
+    $provider = new StatusStore($json_store);
+  
+    $this->statusDetailsKey = uniqid();
+    $status = $provider->save($this->statusDetailsKey, $parts);
+    
     return implode("\n", $parts);
   }
   
@@ -192,11 +203,19 @@ class GithubClient extends RestClient
   public function setCommitStatus($url, $commit, $state, $message) {
     $url = str_replace('{sha}', $commit->sha, $url);
     error_log('pull request status update url: '. $url);
+    
+    //create a details url for the status message
+    $service_url_parts = explode('/', WEBHOOK_SERVICE_URL);
+    array_pop($service_url_parts);
+    array_push($service_url_parts, 'status_details.php?id=' . $this->statusDetailsKey);
+    $details_url = implode('/', $service_url_parts);
+    
     //create payload required for github status post
     //see http://developer.github.com/v3/repos/statuses/#create-a-status
     $payload = null;
     $payload->state = $state;
-    $payload->target_url = VALIDATION_HELP_URL;
+    $payload->target_url = $details_url;
+    
     //TODO: handle github description limit of 140 chars gracefully
     if (strlen($message) < 140) {
       $payload->description = $message;
