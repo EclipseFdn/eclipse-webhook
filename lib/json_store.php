@@ -2,7 +2,7 @@
 /**
 * JSON store - provides functions for serializing validation details using file storage
 */
-define('FILE_PREFIX', 'github_pr_status_');
+define('FILE_PREFIX', '/github_pr_status_');
 
 class JsonStore
 {
@@ -11,11 +11,10 @@ class JsonStore
   }
   
   public function save($key, $data) {
-    return file_put_contents(sys_get_temp_dir() . FILE_PREFIX . $key . 'json', json_encode($data));
+    return file_put_contents(sys_get_temp_dir() . FILE_PREFIX . $key . '.json', json_encode($data));
   }
   
   public function test($key) {
     return (file_exists(sys_get_temp_dir() . FILE_PREFIX . $key .'.json'));
   }
 }
-  
