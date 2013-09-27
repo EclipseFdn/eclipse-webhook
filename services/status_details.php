@@ -23,6 +23,12 @@
   <title>Pull Requests Validation Details</title>
 </head>
 <body>
-  Current status: <?php var_dump($status); ?>
+  <H3>Current status</H3>
+  <?php
+   if (is_array($status)) {
+     echo(implode('<BR>',$status));
+   } else {
+     echo $status;
+  ?>
 </body>
 </html>
