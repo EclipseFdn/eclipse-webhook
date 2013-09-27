@@ -23,7 +23,7 @@ $payload->name = 'web';
 $payload->active = true;
 $payload->events = $github_hook_add_events;
 $payload->config = null;
-$payload->config->content_type = "json";
+$payload->config->content_type = "form";
 $payload->config->url = WEBHOOK_SERVICE_URL;
 
 echo('Installing '. count($github_projects). " web hooks\n");
