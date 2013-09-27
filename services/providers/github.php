@@ -152,21 +152,23 @@ class GithubClient extends RestClient
    * @desc messages come from config/projects.php
    */
   private function composeStatusMessage() {
+    global $messages;
     $parts = array();
+    
     //list problems with corresponding users
     //TODO: figure out a way around github 140 char max. description
     if (count($this->users['invalidCLA'])) {
       array_push($parts, $messages['badCLAs'] . implode(', ', $this->users['invalidCLA']));
     }
-    // if (count($this->users['unknownCLA'])) {
-    //   array_push($parts, $messages['unknownUsers'] . implode(', ', $this->users['unknownCLA']));
-    // }
-    // if (count($this->users['invalidSignedOff'])) {
-    //   array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['invalidSignedOff']));
-    // }
-    // if (count($this->users['unknownSignedOff'])) {
-    //   array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['unknownSignedOff']));
-    // }
+    if (count($this->users['unknownCLA'])) {
+      array_push($parts, $messages['unknownUsers'] . implode(', ', $this->users['unknownCLA']));
+    }
+    if (count($this->users['invalidSignedOff'])) {
+      array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['invalidSignedOff']));
+    }
+    if (count($this->users['unknownSignedOff'])) {
+      array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['unknownSignedOff']));
+    }
     //add a summary message
     if (count($parts)) {
       array_unshift($parts, $messages['failure']);
@@ -195,7 +197,12 @@ class GithubClient extends RestClient
     $payload = null;
     $payload->state = $state;
     $payload->target_url = VALIDATION_HELP_URL;
-    $payload->description = $message;
+    //TODO: handle github description limit of 140 chars gracefully
+    if (strlen($message) < 140) {
+      $payload->description = $message;
+    } else {
+      $payload->description = substr($message, 0, 137) . '...';
+    }
     
     return $this->post($url, $payload);
   }
