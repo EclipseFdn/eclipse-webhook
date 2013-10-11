@@ -29,6 +29,7 @@
      echo(implode('<BR>',$status));
    } else {
      echo $status;
+   }
   ?>
 </body>
 </html>
