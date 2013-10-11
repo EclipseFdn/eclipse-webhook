@@ -11,6 +11,8 @@ include_once('./cla_service.php');
 if (!isset($_SERVER['TOKEN'])) {
   exit('You must provide a Github access token to use this service');
 }
+$event = $_SERVER['HTTP_X_GITHUB_EVENT'];
+error_log('X-Github-Event: '. $event);
 $request = $_REQUEST['payload'];
 
 //while testing, process a sample payload

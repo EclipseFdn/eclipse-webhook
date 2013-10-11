@@ -15,7 +15,7 @@ class CLAService
   }
   
   function process($request) {
-    $result = $this->api->processPullRequest($request);
+    $result = $this->api->processRequest($request);
     var_dump($result);
   }
 }
