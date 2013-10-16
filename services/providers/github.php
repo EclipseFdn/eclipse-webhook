@@ -65,13 +65,13 @@ class GithubClient extends RestClient
       'unknownSignedOff' => array()
     );
     
+    $previous_committers = array();
     for ($i=0; $i < count($commits); $i++) { 
-      error_log('found committer: '.$commits[$i]->committer->login);
-      
       //TODO: evaluate author as well or instead?
-      $this->evaluateCLA($commits[$i]->commit->committer);
-      $this->evaluateSignature($commits[$i]->commit);
-      
+      if (!in_array($commits[$i]->commit->committer, $previous_committers)) {
+        $this->evaluateCLA($commits[$i]->commit->committer);
+        $this->evaluateSignature($commits[$i]->commit);
+      }
       //if there is no login, the user given in the git commit is not a valid github user
       error_log('listed committer in commit: '.
         $commits[$i]->commit->committer->name .
@@ -80,11 +80,13 @@ class GithubClient extends RestClient
       //Signed-off-by is found in the commit message
       error_log('commit message: '.$commits[$i]->commit->message);      
     }
-    var_dump($this->users);
     
     //see if any problems were found, make suitable message
     $pullRequestState = $this->getPullRequestState();
     $pullRequestMessage = $this->composeStatusMessage();
+    
+    //persist the status locally so it can be accessed at the github details url
+    $this->storeStatus();
     
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
@@ -172,6 +174,18 @@ class GithubClient extends RestClient
   }
   
   /*
+   * Function GithubClient::storeStatus
+   * @desc keep a record of the status to use in the details url on github
+   */
+  private function storeStatus() {
+    $json_store = new JsonStore();
+    $provider = new StatusStore($json_store);
+  
+    $this->statusDetailsKey = uniqid();
+    return $provider->save($this->statusDetailsKey, $this->users); 
+  }
+  
+  /*
    * Function GithubClient::composeStatusMessage
    * @desc build the status description including specific users and faults
    * @desc messages come from config/projects.php
@@ -199,13 +213,6 @@ class GithubClient extends RestClient
     } else {
       array_unshift($parts, $messages['success']);
     }
-    
-    //save everything into status store so it can be provided at status 'details' url
-    $json_store = new JsonStore();
-    $provider = new StatusStore($json_store);
-  
-    $this->statusDetailsKey = uniqid();
-    $status = $provider->save($this->statusDetailsKey, $parts);
     
     return implode("\n", $parts);
   }
