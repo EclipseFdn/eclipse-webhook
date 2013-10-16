@@ -68,8 +68,10 @@ class GithubClient extends RestClient
     $previous_committers = array();
     for ($i=0; $i < count($commits); $i++) { 
       //TODO: evaluate author as well or instead?
-      if (!in_array($commits[$i]->commit->committer, $previous_committers)) {
-        $this->evaluateCLA($commits[$i]->commit->committer);
+      $committer = $commits[$i]->commit->committer;
+      if (!in_array($committer->email, $previous_committers)) {
+        $previous_committers[] = $committer->email;
+        $this->evaluateCLA($committer);
         $this->evaluateSignature($commits[$i]->commit);
       }
       //if there is no login, the user given in the git commit is not a valid github user
