@@ -26,7 +26,7 @@ $github_projects = array();
 /*
  * an array of github repo events to monitor
  */
-$github_hook_add_events = array('pull_request'/*,'status'*/);
+$github_hook_add_events = array('pull_request','status');
 /*
  * an array of github repo events to ignore - usually just 'push' as that is the only default event
  */

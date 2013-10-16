@@ -16,20 +16,6 @@ class GithubClient extends RestClient
   private $users;
   private $statusDetailsKey;
   
-  /*rest utility functions
-   *TODO: move to base class
-   */
-  public function get($url) {
-    $json = ($this->curl_get($url));
-    return json_decode($json);
-  }
-  public function post($url, $data) {
-    $json = ($this->curl_post($url, json_encode($data)));
-    return json_decode($json);
-  }
-  public function patch($url, $data) {
-  }
-  
   /*
    * function: GithubClient::processRequest
    * @param string $request - json payload

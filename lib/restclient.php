@@ -68,10 +68,25 @@ class RestClient
       return $result; 
   }
   
-  protected function buildURL(array $components = NULL) {
-    $path = implode('/', components);
+  public function buildURL(array $components = NULL) {
+    $path = implode('/', $components);
     return $this->endPoint .'/'. $path;
   } 
+  
+  /* http convenience functions
+   */
+  public function get($url) {
+    $json = ($this->curl_get($url));
+    return json_decode($json);
+  }
+  public function post($url, $data) {
+    $json = ($this->curl_post($url, json_encode($data)));
+    return json_decode($json);
+  }
+  public function patch($url, $data) {
+  }
+  
+  
 }
 
 ?>
