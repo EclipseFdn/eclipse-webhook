@@ -16,7 +16,8 @@ Quick Start
  * CLA_SERVICE - service endpoint for testing CLA status (e.g. http://projects.eclipse.org/api/cla/validate/)
 1. Test the service by forking an organization repo, making a change and creating a pull request against the original.
  * Results of verification will show up in the pull request comments.
- * You can check your apache error log for validation information.
+ * Follow the details link in the comment for complete information.
+ * Access github_api_limit.php to get a picture of your github api use and reset time.
 
 How it works
 ------------
