@@ -11,6 +11,7 @@ class JsonStore
   }
   
   public function save($key, $data) {
+    error_log('storing data: '. sys_get_temp_dir() . FILE_PREFIX . $key . '.json');
     return file_put_contents(sys_get_temp_dir() . FILE_PREFIX . $key . '.json', json_encode($data));
   }
   

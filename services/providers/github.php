@@ -45,7 +45,11 @@ class GithubClient extends RestClient
     //get repo commits
     $json = json_decode($request);
     error_log('handling pull request from '.$json->repository->full_name);
-
+    error_log('action: '.$json->action);
+    
+    //don't do evaluation if pr is closing
+    if ($json->action == 'close') { return; }
+    
     $commits_url = $json->pull_request->url . '/commits';
     $statuses_url = $json->repository->statuses_url;
     error_log('commits url '.$commits_url);
@@ -87,13 +91,17 @@ class GithubClient extends RestClient
     $pullRequestState = $this->getPullRequestState();
     $pullRequestMessage = $this->composeStatusMessage();
     
+    //get statuses (so we can provide history of 3rd party statuses)
+    $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
+    $this->users['StatusHistory'] = $status_history;
+    
     //persist the status locally so it can be accessed at the github details url
     $this->storeStatus();
     
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
     
-    //TODO: get statuses (so we don't interfere with others)
+    //TODO: check if state of last history message is from a 3rd party and retain any error state in our status
     //TODO: close pull request?
     //TODO: email pull request originator
   }
@@ -219,10 +227,6 @@ class GithubClient extends RestClient
     return implode("\n", $parts);
   }
   
-  public function getPath($path) {
-    $json = $this->get($this->endPoint . $path);
-    return $json;
-  }
   /*
    * Function GithubClient::setCommitStatus
    * @param object commit - target commit for status
@@ -230,7 +234,7 @@ class GithubClient extends RestClient
    * @param string message - comments to explain the status
    * @desc POSTs the status message and appearance on github 
    */
-  public function setCommitStatus($url, $commit, $state, $message) {
+  private function setCommitStatus($url, $commit, $state, $message) {
     $url = str_replace('{sha}', $commit->sha, $url);
     error_log('pull request status update url: '. $url);
     
@@ -254,6 +258,35 @@ class GithubClient extends RestClient
     }
     
     return $this->post($url, $payload);
+  }
+  
+  /*
+   * Function GithubClient::getCommitStatusHistory
+   * @param object commit - commit to query for status
+   * @desc GETs the status messages
+   */
+  private function getCommitStatusHistory($url, $commit) {
+    $result = array();
+    $url = str_replace('{sha}', $commit->sha, $url);
+    $json = $this->get($url);
+    
+    for ($i=0; $i < count($json); $i++) {
+      $status = $json[$i];
+
+      //record only 3rd party statuses, which won't match our details url
+      $service_url_parts = explode('/', WEBHOOK_SERVICE_URL);
+      array_pop($service_url_parts);
+      if (stripos($status->target_url, implode('/', $service_url_parts)) !== 0) {
+        $result[] = array(
+          "url" => $status->url,
+          "created_at" => $status->created_at,
+          "description" => $status->description,
+          "state" => $status->state,
+          "target_url" => $status->target_url
+        );
+      }
+    }
+    return $result;
   }
 }
 
