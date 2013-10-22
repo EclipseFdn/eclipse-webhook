@@ -15,6 +15,7 @@ if (!isset($_SERVER['TOKEN'])) {
 if (!count($github_projects)) {
   exit('You must add project names for one or more github repositories to config/projects.php.');
 }
+//TODO: if the projects list is empty, enumerate all organization repos
 
 //create payload required for github hook post
 //see http://developer.github.com/v3/repos/hooks/#create-a-hook

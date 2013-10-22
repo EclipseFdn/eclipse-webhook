@@ -43,7 +43,7 @@ class GithubClient extends RestClient
    */
   public function processPullRequest($request) {
     //get repo commits
-    $json = json_decode($request);
+    $json = json_decode(stripslashes($request));
     error_log('handling pull request from '.$json->repository->full_name);
     error_log('action: '.$json->action);
     
@@ -113,7 +113,7 @@ class GithubClient extends RestClient
    *        history in the details report.
    */
   public function processStatus($request) {
-    $json = json_decode($request);
+    $json = json_decode(stripslashes($request));
     error_log('processing repo status update with target_url:' . $json->target_url);
     if(stripos(WEBHOOK_SERVICE_URL, $json->target_url) === FALSE) {
       //third party must have set status
@@ -129,10 +129,10 @@ class GithubClient extends RestClient
    */
   private function evaluateCLA($committer) {
     $email = $committer->email;
-    $eclipse_cla_status = $this->curl_get($_SERVER['CLA_SERVICE']) . $email;
-    if ($eclipse_cla_status == 'TRUE') {
+    $eclipse_cla_status = $this->curl_get(CLA_SERVICE . $email);
+    if ($eclipse_cla_status == '"TRUE"') {
       array_push($this->users['validCLA'], $email);
-    } elseif ($eclipse_cla_status == 'FALSE') {
+    } elseif ($eclipse_cla_status == '"FALSE"') {
       array_push($this->users['invalidCLA'], $email);        
     } else {
       array_push($this->users['unknownCLA'], $email);
@@ -148,7 +148,7 @@ class GithubClient extends RestClient
   private function evaluateSignature($commit) {
     $email = $commit->committer->email;
     //look Signed-off-by pattern:
-    $pattern = '/^Signed-off-by:.*<(.*@.*)>$/';
+    $pattern = '/^Signed-off-by:.*<(.*@.*)>$/m';
     //signature is only valid if it matches committer
     if (preg_match($pattern, $commit->message, $matches)) {
       if (count($matches) == 2) {
@@ -159,9 +159,10 @@ class GithubClient extends RestClient
           //matched pattern but isn't the committer email
           array_push($this->users['invalidSignedOff'], $email);
         }
+      } else {
+        //matched pattern but there is more than one
+        array_push($this->users['invalidSignedOff'], $email);
       }
-      //matched pattern but there is more than one
-      array_push($this->users['invalidSignedOff'], $email);
     } else {
       //no Signed-off-by at all
       array_push($this->users['unknownSignedOff'], $email);
@@ -174,11 +175,13 @@ class GithubClient extends RestClient
    * @return string expected by github status api
    */
   private function getPullRequestState() {
-    if (count($this->users['invalidSignedOff']) +
-        count($this->users['unknownSignedOff']) +
-        count($this->users['invalidCLA']) +
-        count($this->users['unknownCLA']) == 0) {
-          return 'success';
+    if ((count($this->users['invalidSignedOff']) +
+         count($this->users['unknownSignedOff']) +
+         count($this->users['invalidCLA']) +
+         count($this->users['unknownCLA']) == 0) &&
+        (count($this->users['validCLA']) +
+         count($this->users['validSignedOff']) > 0)) {
+      return 'success';
     }
     return 'failure';
   }
@@ -220,8 +223,11 @@ class GithubClient extends RestClient
     //add a summary message
     if (count($parts)) {
       array_unshift($parts, $messages['failure']);
-    } else {
+    } elseif (count($this->users['validCLA']) &&
+              count($this->users['validSignedOff'])) {
       array_unshift($parts, $messages['success']);
+    } else {
+      array_unshift($parts, $messages['unknown']);
     }
     
     return implode("\n", $parts);

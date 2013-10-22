@@ -9,11 +9,14 @@ to perform post-processing triggered by various repo events.
 
 Quick Start
 --------------
-1. add Github repository names to ```config/projects.php``` for each repo in the organization.
-1. run ```bin/github_install_hooks.php``` from a shell to install hooks pointing to this service (e.g. github_service.php)
-1. Expose the ```services``` directory via your web server and set up these environment variables in your apache config for your organization:
- * TOKEN - personal access token generated for the organization owner
- * CLA_SERVICE - service endpoint for testing CLA status (e.g. http://projects.eclipse.org/api/cla/validate/)
+1. Expose the ```services``` directory via your web server
+1. Duplicate the configuration file: ```cp config/projects.php config/projects_local.php``` and customize the target.
+ * in your github account settings, click 'Applications' and generate a personal access token. Copy the token into the TOKEN define.
+ * customize the validation url so it points at your service.
+ * add your organization name under ```$github_organization```
+ * optionally add repository names under ```$github_projects```. If you leave this empty, all of the organization's repos will be monitored.
+ * customize the service url to point at your domain.
+1. run ```bin/github_install_hooks.php``` from a shell to install hooks pointing to this service endpoint (i.e. github_service.php)
 1. Test the service by forking an organization repo, making a change and creating a pull request against the original.
  * Results of verification will show up in the pull request comments.
  * Follow the details link in the comment for complete information.

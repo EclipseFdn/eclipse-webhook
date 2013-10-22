@@ -77,15 +77,14 @@ class RestClient
    */
   public function get($url) {
     $json = ($this->curl_get($url));
-    return json_decode($json);
+    return json_decode(stripslashes($json));
   }
   public function post($url, $data) {
     $json = ($this->curl_post($url, json_encode($data)));
-    return json_decode($json);
+    return json_decode(stripslashes($json));
   }
   public function patch($url, $data) {
   }
-  
   
 }
 

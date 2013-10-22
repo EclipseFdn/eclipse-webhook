@@ -73,8 +73,14 @@ ul {
      }
    }
    
-   //START OUTPUT with a summary message
-   $summary = count($parts)?$messages['failure']:$messages['success'];
+   //START OUTPUT with a summary message. Success only on 
+   $summary = $messages['unknown'] || 'Validation status unavailable. Contact support.';
+   if (count($parts)) {
+     $summary = $messages['failure'];
+   } elseif (($status->validCLA && $status->validSignedOff) &&
+             (count($status->validCLA) && count($status->validSignedOff))) {
+     $summary = $messages['success'];
+   }
    echo "<h3>" . $summary . "</h3>";
    
    //output details
