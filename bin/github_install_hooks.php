@@ -9,11 +9,11 @@ if (file_exists('../config/projects_local.php')) {
   include('../config/projects.php');
 }
 
-if (!isset($_SERVER['TOKEN'])) {
+if (!defined('GITHUB_TOKEN')) {
   exit('You must provide a Github access token environment variable to install webhooks.');
 }
 if (!count($github_projects)) {
-  exit('You must add project names for one or more github repositories to config/projects.php.');
+  error('You must add project names for one or more github repositories to config/projects.php.');
 }
 //TODO: if the projects list is empty, enumerate all organization repos
 
@@ -67,7 +67,7 @@ function curl_post($url, $post = NULL, array $options = array()) {
   $defaults = array( 
     CURLOPT_POST => 1, 
     CURLOPT_HEADER => 0, 
-    CURLOPT_HTTPHEADER => array("Authorization: token ".$_SERVER['TOKEN']),
+    CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
     CURLOPT_URL => $url, 
     CURLOPT_FRESH_CONNECT => 1, 
     CURLOPT_RETURNTRANSFER => 1, 
@@ -92,7 +92,7 @@ function curl_patch($url, $post = NULL, array $options = array()) {
     CURLOPT_POST => 1, 
     CURLOPT_CUSTOMREQUEST => 'PATCH',
     CURLOPT_HEADER => 0, 
-    CURLOPT_HTTPHEADER => array("Authorization: token ".$_SERVER['TOKEN']),
+    CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
     CURLOPT_URL => $url, 
     CURLOPT_FRESH_CONNECT => 1, 
     CURLOPT_RETURNTRANSFER => 1, 

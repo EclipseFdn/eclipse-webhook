@@ -2,14 +2,14 @@
 /**
 * Github rate limit checker - provides feedback on request limit and reset time for Github API
 */
-if (!isset($_SERVER['TOKEN'])) {
-  exit('You must provide a Github access token environment variable to determine api rate limit status.');
-}
 
 if (file_exists('../config/projects_local.php')) {
   include('../config/projects_local.php');
 } else {
   include('../config/projects.php');
+}
+if (!defined('GITHUB_TOKEN')) {
+  exit('You must provide a Github access token environment variable to determine api rate limit status.');
 }
 include_once('./providers/github.php');
 

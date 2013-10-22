@@ -23,7 +23,7 @@ class RestClient
       $defaults = array( 
           CURLOPT_POST => 1, 
           CURLOPT_HEADER => 0, 
-          CURLOPT_HTTPHEADER => array("Authorization: token ".$_SERVER['TOKEN']),
+          CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
           CURLOPT_URL => $url, 
           CURLOPT_FRESH_CONNECT => 1, 
           CURLOPT_RETURNTRANSFER => 1, 
@@ -53,7 +53,7 @@ class RestClient
       $defaults = array( 
           CURLOPT_URL => $url,//. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get), 
           CURLOPT_HEADER => 0,
-          CURLOPT_HTTPHEADER => array("Authorization: token ".$_SERVER['TOKEN']),
+          CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
           CURLOPT_RETURNTRANSFER => TRUE, 
           CURLOPT_TIMEOUT => 4 
       ); 

@@ -11,7 +11,7 @@ Quick Start
 --------------
 1. Expose the ```services``` directory via your web server
 1. Duplicate the configuration file: ```cp config/projects.php config/projects_local.php``` and customize the target.
- * in your github account settings, click 'Applications' and generate a personal access token. Copy the token into the TOKEN define.
+ * in your github account settings, click 'Applications' and generate a personal access token. Copy the token into the GITHUB_TOKEN define.
  * customize the validation url so it points at your service.
  * add your organization name under ```$github_organization```
  * optionally add repository names under ```$github_projects```. If you leave this empty, all of the organization's repos will be monitored.

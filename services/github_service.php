@@ -8,7 +8,7 @@
 
 include_once('./providers/github.php');
 include_once('./cla_service.php');
-if (!isset($_SERVER['TOKEN'])) {
+if (!defined('GITHUB_TOKEN')) {
   exit('You must provide a Github access token to use this service');
 }
 $event = $_SERVER['HTTP_X_GITHUB_EVENT'];
