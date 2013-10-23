@@ -252,7 +252,7 @@ class GithubClient extends RestClient
     
     //create payload required for github status post
     //see http://developer.github.com/v3/repos/statuses/#create-a-status
-    $payload = null;
+    $payload = new stdClass();
     $payload->state = $state;
     $payload->target_url = $details_url;
     

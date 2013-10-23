@@ -49,11 +49,11 @@ if (!count($github_projects)) {
 
 //create payload required for github hook post
 //see http://developer.github.com/v3/repos/hooks/#create-a-hook
-$payload = null;
+$payload = new stdClass();
 $payload->name = 'web';
 $payload->active = true;
 $payload->events = $github_hook_add_events;
-$payload->config = null;
+$payload->config = new stdClass();
 $payload->config->content_type = "form";
 $payload->config->url = WEBHOOK_SERVICE_URL;
 
@@ -89,52 +89,4 @@ for ($i=0; $i < count($github_projects); $i++) {
   }
 }
 
-/* utility function to perform a POST operation via curl */
-function curl_post($url, $post = NULL, array $options = array()) { 
-  $defaults = array( 
-    CURLOPT_POST => 1, 
-    CURLOPT_HEADER => 0, 
-    CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
-    CURLOPT_URL => $url, 
-    CURLOPT_FRESH_CONNECT => 1, 
-    CURLOPT_RETURNTRANSFER => 1, 
-    CURLOPT_FORBID_REUSE => 1, 
-    CURLOPT_TIMEOUT => 4, 
-    CURLOPT_POSTFIELDS => $post
-  ); 
-
-  $ch = curl_init(); 
-  curl_setopt_array($ch, ($options + $defaults)); 
-  if( ! $result = curl_exec($ch)) 
-  { 
-    trigger_error(curl_error($ch)); 
-  } 
-  curl_close($ch); 
-  return $result; 
-}
-  
-/* utility function to perform a PATCH operation via curl */
-function curl_patch($url, $post = NULL, array $options = array()) { 
-  $defaults = array( 
-    CURLOPT_POST => 1, 
-    CURLOPT_CUSTOMREQUEST => 'PATCH',
-    CURLOPT_HEADER => 0, 
-    CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
-    CURLOPT_URL => $url, 
-    CURLOPT_FRESH_CONNECT => 1, 
-    CURLOPT_RETURNTRANSFER => 1, 
-    CURLOPT_FORBID_REUSE => 1, 
-    CURLOPT_TIMEOUT => 4, 
-    CURLOPT_POSTFIELDS => $post
-  ); 
-
-  $ch = curl_init(); 
-  curl_setopt_array($ch, ($options + $defaults)); 
-  if( ! $result = curl_exec($ch)) 
-  { 
-    trigger_error(curl_error($ch)); 
-  } 
-  curl_close($ch); 
-  return $result; 
-}
 ?>
