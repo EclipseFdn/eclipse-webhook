@@ -59,11 +59,47 @@ for ($i=0; $i < count($github_projects); $i++) {
 }
 //TODO: compare/synchronize collaborators/members
 
+echo "github repos\n";
 var_dump($collaborators);
+echo "eclipse projects\n";
+var_dump($members);
 
 /* return an array of eclipse foundation members given a project name */
 function getEclipseMembers($project) {
   $members = array();
+  //TODO get member list for project
+  
+  //DEBUG DATA
+  $resultObj = json_decode('{
+    "https://github.com/hooktesto/pulls": [
+      {
+        "email": "a@eclipse.org", 
+        "gitHubId": 42
+      }, 
+      {
+        "email": "b@gmail.com", 
+        "gitHubId": 43
+      }, 
+      {
+        "email": "c@eclipse.org", 
+        "gitHubId": null
+      }
+      ]
+    }'
+  );
+  //END DEBUG DATA
+  
+  if (is_object($resultObj)) {
+    foreach(get_object_vars($resultObj) as $repo => $users) {
+      if ($project == end(explode('/', $repo))) {
+        $members = array();
+        foreach($users as $user) {
+          $members[] = $user->email;
+        }
+      }
+    }
+  }
+
   //TODO: map project to eclipse name and query eclipse ldap for members
   return $members;
 }
@@ -84,13 +120,39 @@ function getGithubCollaborators($repository) {
   
   if (is_array($resultObj)) {
     for ($i=0; $i < count($resultObj); $i++) { 
-      $repo_collaborators[] = $resultObj[$i]->login;
+      $login = $resultObj[$i]->login;
+      $id = $resultObj[$i]->id;
+      //TODO memoize users to avoid api calls
+      $userRecord = getGithubUser($login);
+      $collaborator = new stdClass();
+      $collaborator->login = $login;
+      $collaborator->github_id = $id;
+      $collaborator->email = $userRecord->email;
+      $repo_collaborators[] = $collaborator;
     }
   } else {
     echo "error fetching committers: $url\n";
   }
   
   return $repo_collaborators;
+}
+
+/* return details on a github collaborator */
+function getGithubUser($login) {
+  global $client;
+  
+  $url = implode('/', array(
+    GITHUB_ENDPOINT_URL,
+    'users',
+    $login
+  ));
+  $resultObj = $client->get($url);
+  
+  if ($resultObj) {
+    return $resultObj;
+  }
+  echo "error fetching committer: $url\n";
+  return NULL;
 }
 
 ?>
