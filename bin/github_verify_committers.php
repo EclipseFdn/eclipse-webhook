@@ -1,6 +1,7 @@
 <?php
 /*
  * command line webhook installer for gitub repos
+ * TODO: refactor this to inherit a base class that abstracts the 2nd service
  */
 
 if (file_exists('../config/projects_local.php')) {
@@ -11,6 +12,7 @@ if (file_exists('../config/projects_local.php')) {
 include('../lib/restclient.php');
 
 $client = new RestClient(GITHUB_ENDPOINT_URL);
+$userCache = array();
 
 if (!defined('GITHUB_TOKEN')) {
   exit('You must provide a Github access token environment variable to verify committers.');
@@ -18,10 +20,10 @@ if (!defined('GITHUB_TOKEN')) {
 
 //search for command line passed github organization to monitor
 $options = getopt("o::", array('organization::'));
-if ($options['organization']) {
+if (isset($options['organization'])) {
   $github_organization = $options['organization'];
 }
-if ($options['o']) {
+if (isset($options['o'])) {
   $github_organization = $options['o'];
 }
 if ($github_organization == '') {
@@ -43,7 +45,6 @@ if (!count($github_projects)) {
     for ($i=0; $i < count($result); $i++) { 
       $github_projects[] = $result[$i]->name;
     }
-    error_log('repo list: '. print_r($github_projects, true));
   }
 }
 
@@ -54,20 +55,26 @@ $collaborators = array();
 $members = array();
 
 for ($i=0; $i < count($github_projects); $i++) {
-  $collaborators[$github_projects[$i]] = getGithubCollaborators($github_projects[$i]);
-  $members[$github_projects[$i]] = getEclipseMembers($github_projects[$i]);
-}
-//TODO: compare/synchronize collaborators/members
+  $repoName = $github_projects[$i];
+  $githubResult = getGithubCollaborators($repoName);
+  $eclipseResult = getEclipseMembers($repoName);
 
-echo "github repos\n";
-var_dump($collaborators);
-echo "eclipse projects\n";
-var_dump($members);
+  echo "\nchecking $repoName...\n";
+  echo (isset($messages['missing_members']) ? $messages['missing_members'] :
+              'Github repo collaborators missing from eclipse project: ');
+  echo "\n";
+  $unknowns = compare($githubResult, $eclipseResult);
+  //var_dump($unknowns);
+  
+  foreach ($unknowns as $person) {
+    echo $person->email . "\n";
+  }
+}
 
 /* return an array of eclipse foundation members given a project name */
 function getEclipseMembers($project) {
   $members = array();
-  //TODO get member list for project
+  //TODO get real member list for project
   
   //DEBUG DATA
   $resultObj = json_decode('{
@@ -78,13 +85,36 @@ function getEclipseMembers($project) {
       }, 
       {
         "email": "b@gmail.com", 
-        "gitHubId": 43
-      }, 
+        "gitHubId": 468272
+      },
       {
         "email": "c@eclipse.org", 
         "gitHubId": null
+      },
+      {
+        "email": "d@eclipse.org", 
+        "gitHubId": 249841
       }
-      ]
+      ],
+      "https://github.com/hooktesto/testpulls": [
+        {
+          "email": "a@eclipse.org", 
+          "gitHubId": 42
+        }, 
+        {
+          "email": "b@gmail.com", 
+          "gitHubId": 41
+        }, 
+        {
+          "email": "c@eclipse.org", 
+          "gitHubId": null
+        },
+        {
+          "email": "d@eclipse.org", 
+          "gitHubId": 249841
+        }
+        ]
+      
     }'
   );
   //END DEBUG DATA
@@ -94,7 +124,8 @@ function getEclipseMembers($project) {
       if ($project == end(explode('/', $repo))) {
         $members = array();
         foreach($users as $user) {
-          $members[] = $user->email;
+          $user->gitHubId = intval($user->gitHubId);
+          $members[] = $user;
         }
       }
     }
@@ -122,12 +153,13 @@ function getGithubCollaborators($repository) {
     for ($i=0; $i < count($resultObj); $i++) { 
       $login = $resultObj[$i]->login;
       $id = $resultObj[$i]->id;
-      //TODO memoize users to avoid api calls
       $userRecord = getGithubUser($login);
+
       $collaborator = new stdClass();
       $collaborator->login = $login;
-      $collaborator->github_id = $id;
+      $collaborator->gitHubId = intval($id);
       $collaborator->email = $userRecord->email;
+      
       $repo_collaborators[] = $collaborator;
     }
   } else {
@@ -139,8 +171,11 @@ function getGithubCollaborators($repository) {
 
 /* return details on a github collaborator */
 function getGithubUser($login) {
-  global $client;
+  global $client, $userCache;
   
+  if(isset($userCache[$login])) {
+    return $userCache[$login];
+  }
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
     'users',
@@ -149,10 +184,25 @@ function getGithubUser($login) {
   $resultObj = $client->get($url);
   
   if ($resultObj) {
+    //memoize so we don't have to check again
+    $userCache[$login] = $resultObj;
     return $resultObj;
   }
   echo "error fetching committer: $url\n";
   return NULL;
+}
+
+/* check for discrepancies between services */
+function compare($collaborators, $members) {
+  return array_udiff($collaborators, $members, function ($collaborator, $member) {
+    if ($collaborator->gitHubId == $member->gitHubId) {
+      //echo 'matched '.$member->email.' using githubid' ."\n";
+      return 0;
+    }
+    //TODO: if we match on email address, store the gh id locally so we can 
+    //TODO: handle a change in address on the github side in the future.
+    return strcmp($collaborator->email, $member->email);
+  });
 }
 
 ?>
