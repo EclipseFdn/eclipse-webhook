@@ -63,7 +63,7 @@ date_default_timezone_set('UTC');
       <span>next reset:</span>
     </dd>
     <dt>
-      <span><?php echo(date("D M j G:i:s T", $result->rate->reset) . " (".date("i\ms\s", $result->rate->reset - time()))?> from now)</span>
+      <span><?php if ($result->rate->limit == $result->rate->remaining) {echo 'No api calls made in the last hour';} else { echo(date("D M j G:i:s T", $result->rate->reset) . " (".date("i\ms\s", $result->rate->reset - time()). " from now)");}?></span>
     </dt>
   </dl>
 </div>
