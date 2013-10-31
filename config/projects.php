@@ -30,6 +30,11 @@ define('CLA_SERVICE', 'http://example.com/api/cla/validate/');
 define('VALIDATION_HELP_URL', 'http://example.com/cla_policy.php');
 
 /*
+ * default email which gets CCed on validation failures
+ */
+define('ADMIN_EMAIL', 'noreply@example.com');
+
+/*
  * location for transient files needed for file-based details store
  * N.B. this is only used by the file-based json_store
  */

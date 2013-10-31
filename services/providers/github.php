@@ -101,9 +101,15 @@ class GithubClient extends RestClient
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
     
-    //TODO: check if state of last history message is from a 3rd party and retain any error state in our status
+    //send mail to any configured addresses.
+    $senderRecord = $this->getGithubUser($json->sender->login);
+    $to = array();
+    if ($senderRecord && isset($senderRecord->email)) {
+      $to[] = $senderRecord->email;
+    }
+    $this->emailNotification($to, $pullRequestMessage, $json->pull_request);
+    
     //TODO: close pull request?
-    //TODO: email pull request originator
   }
   /*
    * function: GithubClient::processStatus
@@ -121,6 +127,24 @@ class GithubClient extends RestClient
       //TODO: set a new status and add third party status history to details
     }
     //do nothing, status is already set.
+  }
+  /*
+   * function: GithubClient::emailNotification
+   * @param array $to - email recipients
+   * @param string $message - email body
+   * @param object $json - pull request payload
+   * @desc: sends email to the pull request originator with information about the failure
+   */
+  public function emailNotification($to, $message, $json) {
+    $recipients = explode(',', $to);
+    //TODO: move these strings to config
+    $message = 'There was a problem validating pull request ' . $json->pull_request->url . "\r\n" .
+               "Check the 'Details' link at that url for information on how to resolve this.\r\n";
+    $subject = '[Eclipse-Github][Validation Error] '. $json->repository->full_name;;
+    $headers = 'From: noreply@eclipse.org' . "\r\n" .
+               'Cc: ' . "ADMIN_EMAIL\r\n" .
+               'X-Mailer: PHP/' . phpversion();
+    mail($recipients, $subject, $message, $headers);
   }
   /*
    * Function GithubClient::evaluateCLA
@@ -294,6 +318,27 @@ class GithubClient extends RestClient
     }
     return $result;
   }
+  
+
+  /*
+   * Function GithubClient::getGithubUser
+   * @param string login - github login to query
+   * @desc GETs the complete user record
+   */
+  private function getGithubUser($login) {
+    $url = implode('/', array(
+      GITHUB_ENDPOINT_URL,
+      'users',
+      $login
+    ));
+    $resultObj = $this->get($url);
+  
+    if ($resultObj) {
+      return $resultObj;
+    }
+    return NULL;
+  }
+  
 }
 
 ?>
