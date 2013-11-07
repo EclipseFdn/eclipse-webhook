@@ -84,6 +84,9 @@ class RestClient
     return json_decode(stripslashes($json));
   }
   public function patch($url, $data) {
+    $extra_headers = array(CURLOPT_CUSTOMREQUEST => 'PATCH');
+    $json = ($this->curl_post($url, json_encode($data), $extra_headers));
+    return json_decode(stripslashes($json));
   }
   
 }
