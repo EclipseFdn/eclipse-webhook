@@ -46,6 +46,13 @@ define('TMP_FILE_LOCATION', '/tmp');
 $github_organization = '';
 
 /*
+* dry run mode -- if true, users are not moved when running the
+* github_verify_commiters utility. The utility will report
+* discrepancies and exit.
+*/
+$dry_run = false;
+
+/*
  * an array of github repos to monitor - repo name only
  * N.B. if array is empty, all repos in the organization will be monitored.
  */

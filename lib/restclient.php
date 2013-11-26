@@ -61,7 +61,8 @@ class RestClient
       $ch = curl_init(); 
       curl_setopt_array($ch, ($options + $defaults)); 
       if( ! $result = curl_exec($ch)) 
-      { 
+      {
+          // echo 'curl_get returned with ' . print_r(curl_getinfo($ch))."\n"; 
           trigger_error(curl_error($ch)); 
       } 
       curl_close($ch); 
@@ -77,6 +78,16 @@ class RestClient
    */
   public function get($url) {
     $json = ($this->curl_get($url));
+    return json_decode(stripslashes($json));
+  }
+  public function put($url) {
+    $extra_headers = array(CURLOPT_CUSTOMREQUEST => 'PUT');
+    $json = ($this->curl_get($url, NULL, $extra_headers));
+    return json_decode(stripslashes($json));
+  }
+  public function delete($url) {
+    $extra_headers = array(CURLOPT_CUSTOMREQUEST => 'DELETE');
+    $json = ($this->curl_get($url, NULL, $extra_headers));
     return json_decode(stripslashes($json));
   }
   public function post($url, $data) {
