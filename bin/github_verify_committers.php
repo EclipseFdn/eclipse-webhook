@@ -46,7 +46,7 @@ if ($github_organization == '') {
 
 if (!count($github_projects)) {
   //if the projects list is empty, enumerate all organization repos
-  error_log('no github repositories listed in config/projects.php, enumerating all repos.');
+  error_log('[Info] no github repositories listed in config/projects.php, enumerating all repos.');
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
     'orgs',
@@ -62,7 +62,7 @@ if (!count($github_projects)) {
   }
 }
 
-echo('Verifying '. count($github_projects). " projects\n");
+echo('[Info] verifying '. count($github_projects). " projects\n");
 
 //iterate over repos list, getting collaborators list
 $collaborators = array();
@@ -81,7 +81,7 @@ for ($i=0; $i < count($github_projects); $i++) {
       foreach($repos as $repo) {
         if ($repo->name == $repoName) {
           $teamHasRepo = true;
-          echo "INFO: found existing repo in team.\n";
+          echo "[Info] found existing repo in team.\n";
         }
       }
     }
@@ -103,7 +103,7 @@ for ($i=0; $i < count($github_projects); $i++) {
     $githubResult = getGithubTeamMembers($team->id);
     $eclipseResult = getEclipseMembers($repoName);
 
-    echo "\nchecking $github_organization/$repoName...\n";
+    echo "\n[Info] checking $github_organization/$repoName...\n";
     $toBeRemoved = compare($githubResult, $eclipseResult);
     $toBeAdded = compare($eclipseResult, $githubResult);
     
@@ -116,7 +116,7 @@ for ($i=0; $i < count($github_projects); $i++) {
     if (count($toBeRemoved)) {
       echo (isset($messages['missing_team_members']) ? $messages['missing_team_
         members'] :
-      'Github repo team members missing from eclipse project (to be removed): ');  
+      '[Info] Github repo team members missing from eclipse project (to be removed): ');  
     } 
     echo "\n";
     foreach ($toBeRemoved as $person) {
@@ -137,7 +137,7 @@ for ($i=0; $i < count($github_projects); $i++) {
     if (count($toBeAdded)) {
       
       echo (isset($messages['missing_members']) ? $messages['missing_members'] :
-      'Eclipse project members missing from Github repo team (to be added): ');
+      '[Info] Eclipse project members missing from Github repo team (to be added): ');
       foreach ($toBeAdded as $person) {
         $email = $person->email;
         echo "[Info] adding $email\n";
@@ -362,7 +362,7 @@ function addGithubTeamMember($login, $teamId) {
   ));
   $resultObj = $client->put($url);
   
-  if ($resultObj) {
+  if ($resultObj && ($resultObj->http_code == 204)) {
     return $resultObj;
   }
   echo "[ERROR] adding team member: $url\n";
@@ -376,7 +376,6 @@ function findGithubUser($email) {
   if (isset($userCache[$email])) {
     return $userCache[$email];
   }
-//https://api.github.com/search/users?q=zak.james@gmail.com+in:email  
   //search on github
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,

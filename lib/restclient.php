@@ -23,7 +23,10 @@ class RestClient
       $defaults = array( 
           CURLOPT_POST => 1, 
           CURLOPT_HEADER => 0, 
-          CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
+          CURLOPT_HTTPHEADER => array(
+            "Authorization: token ".GITHUB_TOKEN,
+            "User-Agent: Eclipse-Github-Bot"
+          ),
           CURLOPT_URL => $url, 
           CURLOPT_FRESH_CONNECT => 1, 
           CURLOPT_RETURNTRANSFER => 1, 
@@ -52,19 +55,25 @@ class RestClient
   protected function curl_get($url, array $get = NULL, array $options = array()) {
       $defaults = array( 
           CURLOPT_URL => $url,//. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get), 
-          CURLOPT_HEADER => 0,
-          CURLOPT_HTTPHEADER => array("Authorization: token ".GITHUB_TOKEN),
+          //CURLOPT_HEADER => 1,
+          CURLOPT_HTTPHEADER => array(
+            "Authorization: token ".GITHUB_TOKEN,
+            "User-Agent: Eclipse-Github-Bot"
+          ),
           CURLOPT_RETURNTRANSFER => TRUE, 
           CURLOPT_TIMEOUT => 4 
       ); 
     
       $ch = curl_init(); 
       curl_setopt_array($ch, ($options + $defaults)); 
-      if( ! $result = curl_exec($ch)) 
+      if(! $result = curl_exec($ch)) 
       {
-          // echo 'curl_get returned with ' . print_r(curl_getinfo($ch))."\n"; 
+          $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+          if ($code < 400) {
+            return "{\"http_code\": $code}";
+          }
           trigger_error(curl_error($ch)); 
-      } 
+      }
       curl_close($ch); 
       return $result; 
   }
@@ -81,7 +90,10 @@ class RestClient
     return json_decode(stripslashes($json));
   }
   public function put($url) {
-    $extra_headers = array(CURLOPT_CUSTOMREQUEST => 'PUT');
+    $extra_headers = array(
+      CURLOPT_CUSTOMREQUEST => 'PUT',
+      CURLOPT_POSTFIELDS => ""
+    );
     $json = ($this->curl_get($url, NULL, $extra_headers));
     return json_decode(stripslashes($json));
   }
