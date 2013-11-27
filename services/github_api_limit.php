@@ -15,7 +15,6 @@ include_once('./providers/github.php');
 
 $client = new GitHubClient("https://api.github.com");
 $result = $client->get($client->buildURL(array("rate_limit")));
-
 date_default_timezone_set('UTC');
   
 ?>
@@ -48,22 +47,44 @@ date_default_timezone_set('UTC');
 <div id="content-box" title="Status">
   <dl>
     <dd>
-      <span>request limit:</span>
+      <span>Core API hourly request limit:</span>
     </dd>
     <dt>
-      <span><?php echo($result->rate->limit)?></span>
+      <span><?php echo($result->resources->core->limit)?></span>
     </dt>
     <dd>
       <span>remaining:</span>
     </dd>
     <dt>
-      <span><?php echo($result->rate->remaining)?></span>
+      <span><?php echo($result->resources->core->remaining)?></span>
     </dt>
     <dd>
       <span>next reset:</span>
     </dd>
     <dt>
-      <span><?php if ($result->rate->limit == $result->rate->remaining) {echo 'No api calls made in the last hour';} else { echo(date("D M j G:i:s T", $result->rate->reset) . " (".date("i\ms\s", $result->rate->reset - time()). " from now)");}?></span>
+      <span><?php if ($result->resources->core->limit == $result->resources->core->remaining) {echo 'No api calls made in the last hour';} else { echo(date("D M j G:i:s T", $result->resources->core->reset) . " (".date("i\ms\s", $result->resources->core->reset - time()). " from now)");}?></span>
+    </dt>
+  </dl>
+</div>
+<div id="content-box" title="Search API Status">
+  <dl>
+    <dd>
+      <span>Search API 60 second request limit:</span>
+    </dd>
+    <dt>
+      <span><?php echo($result->resources->search->limit)?></span>
+    </dt>
+    <dd>
+      <span>remaining:</span>
+    </dd>
+    <dt>
+      <span><?php echo($result->resources->search->remaining)?></span>
+    </dt>
+    <dd>
+      <span>next reset:</span>
+    </dd>
+    <dt>
+      <span><?php if ($result->resources->search->limit == $result->resources->search->remaining) {echo 'No search api calls made in the last minute';} else { echo(date("G:i:s T", $result->resources->search->reset) . " (".date("s\s", $result->resources->search->reset - time()). " from now)");}?></span>
     </dt>
   </dl>
 </div>
