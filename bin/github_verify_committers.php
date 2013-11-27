@@ -61,8 +61,9 @@ if (!count($github_projects)) {
     }
   }
 }
-
-echo('[Info] verifying '. count($github_projects). " projects\n");
+$nProjects = count($github_projects);
+$suffix = $nProjects == 1?'':'s';
+echo("[Info] verifying $nProjects project$suffix\n");
 
 //iterate over repos list, getting collaborators list
 $collaborators = array();
@@ -81,7 +82,7 @@ for ($i=0; $i < count($github_projects); $i++) {
       foreach($repos as $repo) {
         if ($repo->name == $repoName) {
           $teamHasRepo = true;
-          echo "[Info] found existing repo in team.\n";
+          echo "[Info] found existing repo '$repoName' associated with team.\n";
         }
       }
     }
@@ -106,50 +107,55 @@ for ($i=0; $i < count($github_projects); $i++) {
     echo "\n[Info] checking $github_organization/$repoName...\n";
     $toBeRemoved = compare($githubResult, $eclipseResult);
     $toBeAdded = compare($eclipseResult, $githubResult);
-    
-    //check for users in team
-    
-    //search for missing users
-    //add missing users to team
-  
+      
     //report discrepancies
     if (count($toBeRemoved)) {
+      echo "\n[Info] ";
       echo (isset($messages['missing_team_members']) ? $messages['missing_team_
         members'] :
-      '[Info] Github repo team members missing from eclipse project (to be removed): ');  
+      'Github repo team members missing from eclipse project (to be removed): ');  
+      echo "\n";
     } 
-    echo "\n";
     foreach ($toBeRemoved as $person) {
       $email = $person->email;
-      echo ('[Info] removing ' . $email !== ''?$email:"login: ".$person->login) . "\n";
+      echo ('[Info] remove ' . $email !== ''?$email:"login: ".$person->login) . "\n";
       if (!$dry_run) {
         if (!isset($person->login)) {
           //try searching github
           $person = findGithubUser($person->email);
         }
         if ($person && $person->login) {
-          $addResult = removeGithubTeamMember($person->login, $team->id);
+          $removeResult = removeGithubTeamMember($person->login, $team->id);
+          if ($removeResult && $removeResult->http_code == 204) {
+            echo "[Info] user removed.\n";
+          } else {
+            echo ("[Error] unable to remove user. Github response: ".
+               isset($removeResult->http_code)?$removeResult->http_code:'unknown'. "\n");
+          }
         } else {
-          echo "[Error] failed to remove unknown github user ".$email."\n";
+          echo "[Error] could not remove unknown github user ".$email."\n";
         }
       }
     }
     if (count($toBeAdded)) {
-      
+      echo "\n[Info] ";
       echo (isset($messages['missing_members']) ? $messages['missing_members'] :
-      '[Info] Eclipse project members missing from Github repo team (to be added): ');
+      'Eclipse project members missing from Github repo team (to be added): ');
+      echo "\n";
+      
       foreach ($toBeAdded as $person) {
         $email = $person->email;
-        echo "[Info] adding $email\n";
+        echo "[Info] add $email\n";
         if (!$dry_run) {
           if (!isset($person->login)) {
             //try searching github
+            echo "[Info] searching for Github user ".$email."\n";
             $person = findGithubUser($email);
           }
           if ($person && $person->login) {
             $addResult = addGithubTeamMember($person->login, $team->id);
           } else {
-            echo "[Error] failed to add unknown github user ".$email."\n";
+            echo "[Info] could not add. User unknown to Github: ".$email."\n";
           }
         }
       }
@@ -343,9 +349,10 @@ function removeGithubTeamMember($login, $teamId) {
     $login
   ));
   $resultObj = $client->delete($url);
-  if (!$resultObj) {
-    echo "[ERROR] removing team member: $url\n";
+  if ($resultObj && ($resultObj->http_code == 204)) {
+    return $resultObj;
   }
+  echo "[ERROR] removing team member: $url\n";
   return NULL;
 }
 

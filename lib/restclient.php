@@ -58,7 +58,8 @@ class RestClient
           //CURLOPT_HEADER => 1,
           CURLOPT_HTTPHEADER => array(
             "Authorization: token ".GITHUB_TOKEN,
-            "User-Agent: Eclipse-Github-Bot"
+            "User-Agent: Eclipse-Github-Bot",
+            "Content-Length: 0"
           ),
           CURLOPT_RETURNTRANSFER => TRUE, 
           CURLOPT_TIMEOUT => 4 
