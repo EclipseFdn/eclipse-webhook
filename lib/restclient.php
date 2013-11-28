@@ -79,8 +79,8 @@ class RestClient
       }
       //getting headers, so we need offset to content
       $headerLength = curl_getinfo($ch,CURLINFO_HEADER_SIZE);
-      $header = substr($response, 0, $headerLength);
-      $body = substr($response, $headerLength);
+      $header = substr($result, 0, $headerLength);
+      $body = substr($result, $headerLength);
       
       //TODO: handle throttling
       curl_close($ch);
