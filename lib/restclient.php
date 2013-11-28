@@ -61,22 +61,30 @@ class RestClient
             "User-Agent: Eclipse-Github-Bot",
             "Content-Length: 0"
           ),
+          CURLOPT_HEADER => TRUE,
           CURLOPT_RETURNTRANSFER => TRUE, 
           CURLOPT_TIMEOUT => 4 
       ); 
-    
+
       $ch = curl_init(); 
       curl_setopt_array($ch, ($options + $defaults)); 
       if(! $result = curl_exec($ch)) 
       {
           $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+          //$githubCallsRemaining = curl_getinfo($ch, CURLINFO_HTTP_HEADER);
           if ($code < 400) {
             return "{\"http_code\": $code}";
           }
           trigger_error(curl_error($ch)); 
       }
-      curl_close($ch); 
-      return $result; 
+      //getting headers, so we need offset to content
+      $headerLength = curl_getinfo($ch,CURLINFO_HEADER_SIZE);
+      $header = substr($response, 0, $headerLength);
+      $body = substr($response, $headerLength);
+      
+      //TODO: handle throttling
+      curl_close($ch);
+      return $body;
   }
   
   public function buildURL(array $components = NULL) {
