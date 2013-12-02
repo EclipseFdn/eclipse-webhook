@@ -10,6 +10,8 @@
  *        A dual-keyed (email and github login) cache attemps to reduce number of
  *        github lookups needed across projects.
  */
+//set a long execution time since we may have to sleep to wait for api limit reset
+ini_set('max_execution_time', '600');
 
 if (file_exists('../config/projects_local.php')) {
   include('../config/projects_local.php');
