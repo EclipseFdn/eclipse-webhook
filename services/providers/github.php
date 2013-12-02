@@ -178,19 +178,14 @@ class GithubClient extends RestClient
   private function evaluateSignature($commit) {
     $email = $commit->committer->email;
     //look Signed-off-by pattern:
-    $pattern = '/^Signed-off-by:.*<(.*@.*)>$/m';
+    $pattern = '/Signed-off-by:.*<(.*@.*)>$/m';
     //signature is only valid if it matches committer
     if (preg_match($pattern, $commit->message, $matches)) {
-      if (count($matches) == 2) {
-        if ($matches[1] == $email) {
-          //matches committer
-          array_push($this->users['validSignedOff'], $email);
-        } else {
-          //matched pattern but isn't the committer email
-          array_push($this->users['invalidSignedOff'], $email);
-        }
+      if ($matches[1] == $email) {
+        //matches committer
+        array_push($this->users['validSignedOff'], $email);
       } else {
-        //matched pattern but there is more than one
+        //matched pattern but isn't the committer email
         array_push($this->users['invalidSignedOff'], $email);
       }
     } else {
