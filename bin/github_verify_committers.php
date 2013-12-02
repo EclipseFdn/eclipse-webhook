@@ -432,13 +432,15 @@ function getGithubUser($login) {
 
 /* check for discrepancies between services */
 function compare($groupA, $groupB) {
-  return array_udiff($groupA, $groupB, function ($a, $b) {
-    if ($a->gitHubId == $b->gitHubId) {
-      //echo 'matched '.$b->email.' using githubid' ."\n";
-      return 0;
-    }
-    return strcmp($a->email, $b->email);
-  });
+  return array_udiff($groupA, $groupB, 'compare_members');
+}
+
+function compare_members($a, $b) {
+  if ($a->gitHubId == $b->gitHubId) {      
+    //echo 'matched '.$b->email.' using githubid' ."\n";
+    return 0;
+  }
+  return strcmp($a->email, $b->email);
 }
 
 ?>
