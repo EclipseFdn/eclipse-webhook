@@ -12,6 +12,35 @@ class RestClient
     $this->endPoint = $endPoint;
   }
 
+  private function throttle($header) {
+    $matches = array();
+    $re = "/X-RateLimit-(.*)\: (\d+)/";
+
+    preg_match_all($re, $header, $matches, PREG_SET_ORDER);
+    $remaining = 0; $limit = 0; $reset = 0;
+    foreach ($matches as $line) {
+      switch ($line[1]) {
+        case 'Limit':
+          $limit = (int)$line[2];
+          break;
+        case 'Remaining':
+          $remaining = (int)$line[2];
+          break;
+        case 'Reset':
+          $reset = (int)$line[2];
+          break;
+        default:
+        echo "[Warning] unknown rate limit header: $line\n";
+          break;
+      }
+    }
+    if ($remaining < 1) {
+      $sleepTime = (int)($reset - time());
+      echo "[Info] rate limit exceeded. Sleeping for $sleepTime s\n";
+      sleep($sleepTime);
+    }
+  }
+  
   /** 
    * Send a POST requst using cURL 
    * @param string $url to request 
@@ -82,7 +111,9 @@ class RestClient
       $header = substr($result, 0, $headerLength);
       $body = substr($result, $headerLength);
       
-      //TODO: handle throttling
+      //handle throttling
+      $this->throttle($header);
+      
       curl_close($ch);
       return $body;
   }
