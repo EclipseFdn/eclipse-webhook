@@ -19,3 +19,4 @@ class JsonStore
     return (file_exists(TMP_FILE_LOCATION . FILE_PREFIX . $key .'.json'));
   }
 }
+?>

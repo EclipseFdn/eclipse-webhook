@@ -19,9 +19,21 @@ if (file_exists('../config/projects_local.php')) {
   include('../config/projects.php');
 }
 include('../lib/restclient.php');
+include('../lib/mysql_store.php');
+include('../lib/json_store.php');
+include('../lib/status_store.php');
 
 $client = new RestClient(GITHUB_ENDPOINT_URL);
+
+//Github record caching and persistence
 $userCache = array();
+$store = null;
+if (defined('MYSQL_DBNAME')) {
+  $store = new MySQLStore();  
+} else {
+  $store = new JSONStore();
+}
+$provider = new StatusStore($store);
 
 if (!defined('GITHUB_TOKEN')) {
   exit('You must provide a Github access token environment variable to verify committers.');
@@ -360,7 +372,7 @@ function removeGithubTeamMember($login, $teamId) {
 
 /* add a github user to a team */
 function addGithubTeamMember($login, $teamId) {
-  global $client, $userCache;
+  global $client;
 
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
@@ -381,9 +393,13 @@ function addGithubTeamMember($login, $teamId) {
 /* return details on a github user by searching on email address.*/
 /* if possible return a cached result to avoid search api hit */
 function findGithubUser($email) {
-  global $client, $userCache;
+  global $client, $userCache, $store;
   if (isset($userCache[$email])) {
     return $userCache[$email];
+  }
+  $json = $store->load($email);
+  if ($json) {
+    return $json;
   }
   //search on github
   $url = implode('/', array(
@@ -404,7 +420,7 @@ function findGithubUser($email) {
 /* this function also uses and sets the cache to avoid */
 /* multiple lookups for the same user */
 function getGithubUser($login) {
-  global $client, $userCache;
+  global $client, $userCache, $store;
   
   if(isset($userCache[$login])) {
     return $userCache[$login];
@@ -418,10 +434,13 @@ function getGithubUser($login) {
   $resultObj = $client->get($url);
   
   if ($resultObj) {
-    //memoize so we don't have to check again
+    //memoize and store so we don't have to check again
     $userCache[$login] = $resultObj;
     if (isset($resultObj->email)) {
       $userCache[$resultObj->email] = $resultObj;
+      if (!$store->load($resultObj->email)) {
+        $store->save($resultObj->email, json_encode($resultObj));
+      }
     }
     return $resultObj;
   }

@@ -12,6 +12,10 @@ class StatusStore
   {
       $this->store = $store;
   }
+  function __destruct()
+  {
+      $this->store = NULL;
+  }
   
   function load($key) {
     return $this->store->load($key);

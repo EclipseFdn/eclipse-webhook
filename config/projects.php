@@ -82,4 +82,13 @@ $messages = array(
   'unknownUser' => 'The following user does not have an Eclipse account: ',
   'unknownUsers' => 'The following users do not have Eclipse accounts: ',
 );
+
+/*
+ * Mysql credentials -- needed when using mysql storage
+ */
+define('MYSQL_HOST', NULL);
+define('MYSQL_USER', NULL);
+define('MYSQL_PASS', NULL);
+define('MYSQL_DBNAME', NULL);
+
 ?>
