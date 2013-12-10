@@ -34,7 +34,9 @@ class RestClient
           break;
       }
     }
-    if ($remaining < 1) {
+    //check if tokens are available. Sometimes github has reset time set to 0
+    //so handle that too.
+    if ($remaining < 1 && reset > 0) {
       $sleepTime = (int)($reset - time());
       echo "[Info] rate limit exceeded. Sleeping for $sleepTime s\n";
       sleep($sleepTime);
