@@ -142,10 +142,26 @@ class GithubClient extends RestClient
       $recipients = ADMIN_EMAIL;
     }
     
-    //TODO: move these strings to config
-    $message = 'There was a problem validating pull request ' . $json->pull_request->url . "\r\n" .
-               "Check the 'Details' link at that url for information on how to resolve this.\r\n\n" .
-                $message;
+    //TODO: move email strings to config
+    
+    $historyDetail = $this->users['StatusHistory'];
+    if (is_array($historyDetail)) {
+      $historyMessage = "\n\nExternal Service Status history: \n";
+      $items = array();
+      foreach($historyDetail as $item) {
+        $items[] = "Description: ".$item['description']."\n" .
+                   "State: ".$item['state']."\n" .
+                   "Date: ".$item['created_at']."\n" .
+                   "Details: ". $item['target_url'] ."\n";
+      }
+      $historyMessage .= implode("\n", $items);
+    }
+    
+    $message = 'There was a problem validating pull request ' .
+                $json->pull_request->url . "\r\n\n" .
+                $message .
+                $historyMessage;
+    
     $subject = '[Eclipse-Github][Validation Error] '. $json->repository->full_name;
     $headers = 'From: noreply@eclipse.org' . "\r\n" .
                'Cc: ' . ADMIN_EMAIL . "\r\n" .
