@@ -24,6 +24,11 @@ define('WEBHOOK_SERVICE_URL', 'http://example.com/eclipse-webhook/services/githu
 define('CLA_SERVICE', 'http://example.com/api/cla/validate/');
 
 /*
+ * URL for the Local User List server - provides master list for sync
+ */
+define('USER_SERVICE', 'http://example.com/api/sync/users');
+
+/*
  * default link provided if no validation details can be generated
  * should link to general help information on cla policy.
  */

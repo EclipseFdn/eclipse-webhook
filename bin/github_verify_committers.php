@@ -223,51 +223,15 @@ function getTeam($project) {
 
 /* return an array of eclipse foundation members given a project name */
 function getEclipseMembers($project) {
+  global $client;
   $members = array();
-  //TODO get real member list for project
   
-  //DEBUG DATA
-  $resultObj = json_decode('{
-    "https://github.com/hooktesto/pulls": [
-      {
-        "email": "a@eclipse.org", 
-        "gitHubId": 42
-      }, 
-      {
-        "email": "b@eclipse.org", 
-        "gitHubId": null
-      },
-      {
-        "email": "c@eclipse.org", 
-        "gitHubId": null
-      },
-      {
-        "email": "d@eclipse.org", 
-        "gitHubId": 249841
-      }
-      ],
-      "https://github.com/hooktesto/testpulls": [
-        {
-          "email": "a@eclipse.org", 
-          "gitHubId": 42
-        }, 
-        {
-          "email": "b@gmail.com", 
-          "gitHubId": 41
-        }, 
-        {
-          "email": "c@eclipse.org", 
-          "gitHubId": null
-        },
-        {
-          "email": "d@eclipse.org", 
-          "gitHubId": 249841
-        }
-        ]
-      
-    }'
-  );
-  //END DEBUG DATA
+  $url = implode('/', array(
+    USER_SERVICE,
+    "$project"
+  ));
+
+  $resultObj = $client->get($url);
   
   if (is_object($resultObj)) {
     foreach(get_object_vars($resultObj) as $repo => $users) {
