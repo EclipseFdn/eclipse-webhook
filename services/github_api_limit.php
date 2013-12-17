@@ -4,9 +4,9 @@
 */
 
 if (file_exists('../config/projects_local.php')) {
-  include('../config/projects_local.php');
+  include_once('../config/projects_local.php');
 } else {
-  include('../config/projects.php');
+  include_once('../config/projects.php');
 }
 if (!defined('GITHUB_TOKEN')) {
   exit('You must provide a Github access token environment variable to determine api rate limit status.');

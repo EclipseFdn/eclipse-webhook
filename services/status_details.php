@@ -1,17 +1,23 @@
 <?php
   
-  include('../lib/json_store.php');
-  include('../lib/status_store.php');
   if (file_exists('../config/projects_local.php')) {
     include('../config/projects_local.php');
   } else {
     include('../config/projects.php');
   }
-
+  include('../lib/mysql_store.php');
+  include('../lib/json_store.php');
+  include('../lib/status_store.php');
+  
   $key = $_REQUEST['id'];
   
-  $json_store = new JsonStore();
-  $provider = new StatusStore($json_store);
+  $store = null;
+  if (defined('MYSQL_DBNAME')) {
+    $store = new MySQLStore();  
+  } else {
+    $store = new JSONStore();
+  }
+  $provider = new StatusStore($store);
   
   //TODO: perform key validation so we don't just load anything
   if ($provider->test($key)) {

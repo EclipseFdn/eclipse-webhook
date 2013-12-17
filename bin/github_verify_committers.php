@@ -14,14 +14,14 @@
 ini_set('max_execution_time', '600');
 
 if (file_exists('../config/projects_local.php')) {
-  include('../config/projects_local.php');
+  include_once('../config/projects_local.php');
 } else {
-  include('../config/projects.php');
+  include_once('../config/projects.php');
 }
-include('../lib/restclient.php');
-include('../lib/mysql_store.php');
-include('../lib/json_store.php');
-include('../lib/status_store.php');
+include_once('../lib/restclient.php');
+include_once('../lib/mysql_store.php');
+include_once('../lib/json_store.php');
+include_once('../lib/status_store.php');
 
 $client = new RestClient(GITHUB_ENDPOINT_URL);
 

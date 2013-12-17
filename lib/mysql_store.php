@@ -15,20 +15,20 @@ class MySQLStore
     }
 
     $create_table =
-    'CREATE TABLE IF NOT EXISTS users  
+    'CREATE TABLE IF NOT EXISTS github
     (
-        email VARCHAR(200) NOT NULL,
+        identifier VARCHAR(200) NOT NULL,
         json BLOB NOT NULL,
-        PRIMARY KEY(email)
+        PRIMARY KEY(identifier)
     )';
 
     // Create table
     $create_tbl = $this->db->query($create_table);
     if ($create_table) {
-      echo "[Info][MySQLStore] Github users table ok\n";
+      echo "[Info][MySQLStore] Github json table ok\n";
     }
     else {
-      echo "[Error] MySQL store failed to create users table";  
+      echo "[Error] MySQL store failed to create github table";  
     }
   }
   
@@ -37,7 +37,7 @@ class MySQLStore
   }
   
   public function load($key) {
-    $sql = "SELECT json FROM users WHERE email = '$key'";
+    $sql = "SELECT json FROM github WHERE identifier = '$key'";
     $result = $this->db->query($sql);
     $row = $result->fetch_assoc();
     $result->free_result();
@@ -49,14 +49,17 @@ class MySQLStore
   }
   
   public function save($key, $data) {
-    $sql = "INSERT INTO users VALUES('$key', '$data')";
+    if (gettype($data) != 'string') {
+      $data = json_encode($data);
+    }
+    $sql = "INSERT INTO github VALUES('$key', '$data')";
     //error_log("[INFO][MySQLStore] storing data: $sql\n");
     $result = $this->db->query($sql);
     return $result;
   }
   
   public function test($key) {
-    return $this->db->query("SELECT COUNT(email) from users where email='$key'");
+    return $this->db->query("SELECT COUNT(identifier) from github where identifier='$key'");
   }
 }
 ?>

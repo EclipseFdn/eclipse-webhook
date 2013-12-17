@@ -3,11 +3,12 @@
 * Github model - provides functions for interacting with GitHub API
 */
 if (file_exists('../config/projects_local.php')) {
-  include('../config/projects_local.php');
+  include_once('../config/projects_local.php');
 } else {
-  include('../config/projects.php');
+  include_once('../config/projects.php');
 }
 include_once('../lib/restclient.php');
+include_once('../lib/mysql_store.php');
 include_once('../lib/json_store.php');
 include_once('../lib/status_store.php');
 
@@ -145,7 +146,8 @@ class GithubClient extends RestClient
     //TODO: move email strings to config
     
     $historyDetail = $this->users['StatusHistory'];
-    if (is_array($historyDetail)) {
+    $historyMessage = '';
+    if (is_array($historyDetail) && count($historyDetail)) {
       $historyMessage = "\n\nExternal Service Status history: \n";
       $items = array();
       foreach($historyDetail as $item) {
@@ -232,8 +234,13 @@ class GithubClient extends RestClient
    * @desc keep a record of the status to use in the details url on github
    */
   private function storeStatus() {
-    $json_store = new JsonStore();
-    $provider = new StatusStore($json_store);
+    $store = null;
+    if (defined('MYSQL_DBNAME')) {
+      $store = new MySQLStore();  
+    } else {
+      $store = new JSONStore();
+    }
+    $provider = new StatusStore($store);
   
     $this->statusDetailsKey = uniqid();
     return $provider->save($this->statusDetailsKey, $this->users); 
