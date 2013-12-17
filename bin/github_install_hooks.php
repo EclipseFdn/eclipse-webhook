@@ -81,11 +81,11 @@ for ($i=0; $i < count($github_projects); $i++) {
         if (count($resultObj->errors)) {
           echo 'WARNING: github reports '. $resultObj->errors[0]->message ."\n";
         }
-        //get the exiting hook
+        //get the existing hook
         $resultObj = $client->get($patchUrl);
         foreach ($resultObj as $hook) {
           echo 'INFO: existing hook: ' . $hook->url . "\n";
-          if ($hook->config->url == WEBHOOK_SERVICE_URL) {
+          if ($hook->config->url && $hook->config->url == WEBHOOK_SERVICE_URL) {
             //check if events are ok and hook is active before repairing
             if ($hook->events == $github_hook_add_events && 
                 $hook->active) {
