@@ -232,7 +232,6 @@ function getEclipseMembers($project) {
   ));
 
   $resultObj = $client->get($url);
-  
   if (is_object($resultObj)) {
     foreach(get_object_vars($resultObj) as $repo => $users) {
       if ($project == end(explode('/', $repo))) {
