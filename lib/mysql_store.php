@@ -2,6 +2,8 @@
 /**
 * MySQL store - provides functions for serializing validation and user details using db storage
 */
+date_default_timezone_set('UTC');
+
 class MySQLStore
 {
   private $db;
@@ -19,6 +21,7 @@ class MySQLStore
     (
         identifier VARCHAR(200) NOT NULL,
         json BLOB NOT NULL,
+        created TIMESTAMP,
         PRIMARY KEY(identifier)
     )';
 
@@ -52,7 +55,8 @@ class MySQLStore
     if (gettype($data) != 'string') {
       $data = json_encode($data);
     }
-    $sql = "INSERT INTO github VALUES('$key', '$data')";
+    $time = date("Y-m-d H:i:s");
+    $sql = "INSERT INTO github VALUES('$key', '$data', '$time')";
     //error_log("[INFO][MySQLStore] storing data: $sql\n");
     $result = $this->db->query($sql);
     return $result;

@@ -13,7 +13,9 @@ if (!defined('GITHUB_TOKEN')) {
 }
 $event = $_SERVER['HTTP_X_GITHUB_EVENT'];
 error_log('X-Github-Event: '. $event);
-$request = $_REQUEST['payload'];
+if (isset($_REQUEST['payload'])) {
+  $request = $_REQUEST['payload'];  
+}
 
 //while testing, process a sample payload
 if (!isset($request)) {
