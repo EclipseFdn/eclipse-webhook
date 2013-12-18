@@ -1,38 +1,18 @@
 {
-    "https://github.com/hooktesto/pulls": [
-        {
-            "email": "a@eclipse.org",
-            "gitHubId": 42
-        },
-        {
-            "email": "b@eclipse.org",
-            "gitHubId": null
-        },
-        {
-            "email": "c@eclipse.org",
-            "gitHubId": null
-        },
-        {
-            "email": "d@eclipse.org",
-            "gitHubId": 249841
-        }
-    ],
-    "https://github.com/hooktesto/testpulls": [
-        {
-            "email": "a@eclipse.org",
-            "gitHubId": 42
-        },
-        {
-            "email": "b@gmail.com",
-            "gitHubId": 41
-        },
-        {
-            "email": "c@eclipse.org",
-            "gitHubId": null
-        },
-        {
-            "email": "d@eclipse.org",
-            "gitHubId": 249841
-        }
-    ]
+    "https://github.com/hooktestco/pulls": {
+        "users": [
+            "a@eclipse.org",
+            "b@eclipse.org",
+            "c@eclipse.org",
+            "d@eclipse.org"
+        ]
+    },
+    "https://github.com/hooktestco/testpulls": {
+        "users": [
+            "e@eclipse.org",
+            "f@gmail.com",
+            "g@eclipse.org",
+            "h@eclipse.org"
+        ]
+    }
 }

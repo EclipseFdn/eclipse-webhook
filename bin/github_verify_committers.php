@@ -96,7 +96,7 @@ for ($i=0; $i < count($github_projects); $i++) {
       foreach($repos as $repo) {
         if ($repo->name == $repoName) {
           $teamHasRepo = true;
-          echo "[Info] found existing repo '$repoName' associated with team.\n";
+          echo "[Info] found repo '$repoName' associated with team ".$team->name."\n";
         }
       }
     }
@@ -186,7 +186,7 @@ for ($i=0; $i < count($github_projects); $i++) {
 /* create a team if none exists */
 function getTeam($project) {
   global $github_organization, $client;
-  $teamName = $github_organization . '.org-rt.' . $project;
+  $teamName = $github_organization . '-' . $project;
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
     'orgs',
@@ -207,6 +207,7 @@ function getTeam($project) {
     echo "[Error] failed fetching teams: $url\n";
   }
   //no existing team, create one
+  echo "[Info] creating new team for project $project\n";
   $payload = new stdClass();
   $payload->name = $teamName;
   $payload->permission = "push";
@@ -233,18 +234,17 @@ function getEclipseMembers($project) {
 
   $resultObj = $client->get($url);
   if (is_object($resultObj)) {
-    foreach(get_object_vars($resultObj) as $repo => $users) {
+    foreach(get_object_vars($resultObj) as $repo => $content) {
       if ($project == end(explode('/', $repo))) {
-        $members = array();
-        foreach($users as $user) {
-          $user->gitHubId = intval($user->gitHubId);
-          $members[] = $user;
+        //TODO: handle multiple teams per repo
+        foreach($content->users as $user) {
+          $member = new stdClass();
+          $member->email = $user;
+          $members[] = $member;
         }
       }
     }
   }
-
-  //TODO: map project to eclipse name and query eclipse ldap for members
   return $members;
 }
 
@@ -418,10 +418,10 @@ function compare($groupA, $groupB) {
 }
 
 function compare_members($a, $b) {
-  if ($a->gitHubId == $b->gitHubId) {      
-    //echo 'matched '.$b->email.' using githubid' ."\n";
-    return 0;
-  }
+  // if ($a->gitHubId == $b->gitHubId) {      
+  //   //echo 'matched '.$b->email.' using githubid' ."\n";
+  //   return 0;
+  // }
   return strcmp($a->email, $b->email);
 }
 
