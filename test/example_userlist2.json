@@ -1,7 +1,7 @@
 {
-    "hooktestco-pulls": {
+    "hooktestco-testpulls": {
         "repos": [
-            "https://github.com/hooktestco/pulls"
+            "https://github.com/hooktestco/testpulls"
         ],
         "users": [
             "a@eclipse.org",

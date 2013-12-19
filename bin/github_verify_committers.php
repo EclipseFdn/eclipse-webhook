@@ -227,16 +227,13 @@ function getEclipseMembers($project) {
   global $client;
   $members = array();
   
-  $url = implode('/', array(
-    USER_SERVICE,
-    "$project"
-  ));
+  $url = USER_SERVICE . $project;
 
   $resultObj = $client->get($url);
   if (is_object($resultObj)) {
-    foreach(get_object_vars($resultObj) as $repo => $content) {
-      if ($project == end(explode('/', $repo))) {
-        //TODO: handle multiple teams per repo
+    foreach(get_object_vars($resultObj) as $teamName => $content) {
+      if ($project == end(explode('-', $teamName))) {
+        //TODO: handle multiple repos per team
         foreach($content->users as $user) {
           $member = new stdClass();
           $member->email = $user;
