@@ -98,10 +98,10 @@ class RestClient
       ); 
 
       $ch = curl_init(); 
-      curl_setopt_array($ch, ($options + $defaults)); 
-      if(! $result = curl_exec($ch)) 
-      {
-          $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_setopt_array($ch, ($options + $defaults));
+      $result = curl_exec($ch);
+      $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      if(! $result) {
           //$githubCallsRemaining = curl_getinfo($ch, CURLINFO_HTTP_HEADER);
           if ($code < 400) {
             return "{\"http_code\": $code}";
@@ -112,11 +112,13 @@ class RestClient
       $headerLength = curl_getinfo($ch,CURLINFO_HEADER_SIZE);
       $header = substr($result, 0, $headerLength);
       $body = substr($result, $headerLength);
-      
       //handle throttling
       $this->throttle($header);
-      
+      if(strlen($body) <= 0) {
+      	$body = "{\"http_code\": $code}";
+      }
       curl_close($ch);
+      
       return $body;
   }
   

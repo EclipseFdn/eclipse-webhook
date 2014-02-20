@@ -33,6 +33,13 @@ if (defined('MYSQL_DBNAME')) {
 } else {
   $store = new JSONStore();
 }
+
+$ldap_client = null;
+if (defined('LDAP_HOST')) {
+	include_once('../lib/ldapclient.php');
+	$ldap_client = new LDAPClient(LDAP_HOST, LDAP_DN);
+	echo "[Info] using " . LDAP_HOST . " as fallback ID source.\n";
+}
 $provider = new StatusStore($store);
 
 if (!defined('GITHUB_TOKEN')) {
@@ -117,7 +124,13 @@ for ($i=0; $i < count($github_projects); $i++) {
     //compare membership lists
     $githubResult = getGithubTeamMembers($team->id);
     $eclipseResult = getEclipseMembers($repoName);
-
+    
+    /* echo "Github members: \n";
+    print_r($githubResult);
+    echo "Eclipse members: \n";
+    print_r($eclipseResult);
+    */ 
+    
     echo "\n[Info] checking $github_organization/$repoName...\n";
     $toBeRemoved = compare($githubResult, $eclipseResult);
     $toBeAdded = compare($eclipseResult, $githubResult);
@@ -159,7 +172,7 @@ for ($i=0; $i < count($github_projects); $i++) {
       
       foreach ($toBeAdded as $person) {
         $email = $person->email;
-        echo "[Info] add $email\n";
+        echo "[Info] add $email [GITHUB:" . $person->login . "]\n";
         if (!$dry_run) {
           if (!isset($person->login)) {
             //try searching github
@@ -225,11 +238,12 @@ function getTeam($project) {
 /* return an array of eclipse foundation members given a project name */
 function getEclipseMembers($project) {
   global $client;
+  global $ldap_client;
   $members = array();
   
   $url = USER_SERVICE . $project;
-
   $resultObj = $client->get($url);
+
   if (is_object($resultObj)) {
     foreach(get_object_vars($resultObj) as $teamName => $content) {
       if ($project == end(explode('-', $teamName))) {
@@ -237,6 +251,9 @@ function getEclipseMembers($project) {
         foreach($content->users as $user) {
           $member = new stdClass();
           $member->email = $user;
+          if (defined('LDAP_HOST')) {
+            $member->login = $ldap_client->getGithubIDFromMail($user);
+          }
           $members[] = $member;
         }
       }
@@ -257,7 +274,6 @@ function getGithubTeamMembers($teamId) {
     'members'
   ));
   $resultObj = $client->get($url);
-  
   if (is_array($resultObj)) {
     for ($i=0; $i < count($resultObj); $i++) { 
       $login = $resultObj[$i]->login;
@@ -268,7 +284,6 @@ function getGithubTeamMembers($teamId) {
       $member->login = $login;
       $member->gitHubId = intval($id);
       $member->email = isset($userRecord->email)?$userRecord->email:'';
-      
       $members[] = $member;
     }
   } else {
@@ -342,12 +357,14 @@ function addGithubTeamMember($login, $teamId) {
     $login
   ));
   $resultObj = $client->put($url);
-  
+
   if ($resultObj && ($resultObj->http_code == 204)) {
     return $resultObj;
   }
-  echo "[ERROR] adding team member: $url\n";
-  return NULL;
+  else {
+  	echo "[ERROR] adding team member: $url\n";
+  	return NULL;
+  }
 }
 
 /* return details on a github user by searching on email address.*/
@@ -415,11 +432,11 @@ function compare($groupA, $groupB) {
 }
 
 function compare_members($a, $b) {
-  // if ($a->gitHubId == $b->gitHubId) {      
-  //   //echo 'matched '.$b->email.' using githubid' ."\n";
-  //   return 0;
-  // }
-  return strcmp($a->email, $b->email);
+	# if logins match, nothing to do, otherwise, use email as the validator
+	$email = strcmp($a->email, $b->email);
+	$login = strcmp($a->login, $b->login);
+	
+	return ($login == 0 ? 0 : $email );
 }
 
 ?>

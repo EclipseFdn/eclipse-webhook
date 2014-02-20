@@ -74,10 +74,11 @@ class GithubClient extends RestClient
     for ($i=0; $i < count($commits); $i++) { 
       //TODO: evaluate author as well or instead?
       $committer = $commits[$i]->commit->committer;
+      $gh_committer = $commits[$i]->committer;
       if (!in_array($committer->email, $previous_committers)) {
         $previous_committers[] = $committer->email;
-        $this->evaluateCLA($committer);
-        $this->evaluateSignature($commits[$i]->commit);
+        $this->evaluateCLA($committer, $gh_committer);
+        $this->evaluateSignature($commits[$i]->commit, $gh_committer);
       }
       //if there is no login, the user given in the git commit is not a valid github user
       error_log('listed committer in commit: '.
@@ -175,13 +176,21 @@ class GithubClient extends RestClient
    * @param object committer - github user who made the commit
    * @desc evaluate CLA status against external service  
    */
-  private function evaluateCLA($committer) {
+  private function evaluateCLA($committer, $gh_committer) {
     $email = $committer->email;
+    $gh_login = $gh_committer->login; // should perhaps use the numeric ID instead
+
     $eclipse_cla_status = $this->curl_get(CLA_SERVICE . $email);
     if ($eclipse_cla_status == '"TRUE"') {
       array_push($this->users['validCLA'], $email);
     } elseif ($eclipse_cla_status == '"FALSE"') {
-      array_push($this->users['invalidCLA'], $email);        
+      $eclipse_cla_status = $this->curl_get(CLA_SERVICE . $gh_login); // prefix "GITHUB:" ?
+      if ($eclipse_cla_status == '"TRUE"') {
+      	array_push($this->users['validCLA'], $gh_login);
+      }
+      else {
+        array_push($this->users['invalidCLA'], $email);
+      }
     } else {
       array_push($this->users['unknownCLA'], $email);
     }
@@ -193,18 +202,22 @@ class GithubClient extends RestClient
    * @desc evaluate signature match in Signed-off-by against committer
      @desc Signed-off-by is found in the commit message 
    */
-  private function evaluateSignature($commit) {
+  private function evaluateSignature($commit, $gh_login) {
     $email = $commit->committer->email;
+    $gh_login = $gh_committer->login;
+    
     //look Signed-off-by pattern:
-    $pattern = '/Signed-off-by:.*<(.*@.*)>$/m';
+    $pattern = '/Signed-off-by:(.*)<(.*@.*)>$/m';
     //signature is only valid if it matches committer
     if (preg_match($pattern, $commit->message, $matches)) {
-      if ($matches[1] == $email) {
-        //matches committer
+      if ($matches[2] == $email) {
         array_push($this->users['validSignedOff'], $email);
-      } else {
-        //matched pattern but isn't the committer email
-        array_push($this->users['invalidSignedOff'], $email);
+      } 
+      elseif(trim($matches[1]) == $gh_login) {
+        array_push($this->users['validSignedOff'], $gh_login);
+      }
+      else {
+      	array_push($this->users['invalidSignedOff'], $gh_login);
       }
     } else {
       //no Signed-off-by at all

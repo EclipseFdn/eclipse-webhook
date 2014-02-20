@@ -96,4 +96,11 @@ define('MYSQL_USER', NULL);
 define('MYSQL_PASS', NULL);
 define('MYSQL_DBNAME', NULL);
 
+/*
+ * Email to ID LDAP fallback
+ * If a user's email is not available to the public, perform an LDAP lookup
+ */
+define('LDAP_HOST', NULL);
+define('LDAP_DN', NULL);
+
 ?>
