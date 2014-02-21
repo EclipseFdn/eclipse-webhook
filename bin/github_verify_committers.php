@@ -250,10 +250,14 @@ function getEclipseMembers($project) {
         //TODO: handle multiple repos per team
         foreach($content->users as $user) {
           $member = new stdClass();
-          $member->email = $user;
           if (defined('LDAP_HOST')) {
             $member->login = $ldap_client->getGithubIDFromMail($user);
           }
+          else {
+          	$member->login = '';
+          }
+          $member->gitHubId = '';
+          $member->email = $user;
           $members[] = $member;
         }
       }
@@ -282,8 +286,8 @@ function getGithubTeamMembers($teamId) {
 
       $member = new stdClass();
       $member->login = $login;
-      $member->gitHubId = intval($id);
-      $member->email = isset($userRecord->email)?$userRecord->email:'';
+      $member->gitHubId = intval($id);  # not really needed
+      $member->email = isset($userRecord->email) ? $userRecord->email : '';
       $members[] = $member;
     }
   } else {
@@ -432,11 +436,14 @@ function compare($groupA, $groupB) {
 }
 
 function compare_members($a, $b) {
-	# if logins match, nothing to do, otherwise, use email as the validator
-	$email = strcmp($a->email, $b->email);
-	$login = strcmp($a->login, $b->login);
-	
-	return ($login == 0 ? 0 : $email );
+  # If we use LDAP, only consider the login... otherwise, hope the GitHub 
+  # users have exposed their email address.
+  if (defined('LDAP_HOST')) {
+    return (strcmp($a->login, $b->login));
+  }
+  else {
+  	return (strcmp($a->email, $b->email));
+  }
 }
 
 ?>
