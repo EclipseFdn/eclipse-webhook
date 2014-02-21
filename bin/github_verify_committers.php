@@ -241,6 +241,9 @@ function getEclipseMembers($project) {
   global $ldap_client;
   $members = array();
   
+  # strip "." from project shortname (exception for vert.x)
+  $project = str_replace(".", "", $project);
+  
   $url = USER_SERVICE . $project;
   $resultObj = $client->get($url);
 
