@@ -442,10 +442,10 @@ function compare_members($a, $b) {
   # If we use LDAP, only consider the login... otherwise, hope the GitHub 
   # users have exposed their email address.
   if (defined('LDAP_HOST')) {
-    return (strcmp($a->login, $b->login));
+    return (strcasecmp($a->login, $b->login));
   }
   else {
-  	return (strcmp($a->email, $b->email));
+  	return (strcasecmp($a->email, $b->email));
   }
 }
 
