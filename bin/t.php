@@ -124,13 +124,12 @@ for ($i=0; $i < count($github_projects); $i++) {
     //compare membership lists
     $githubResult = getGithubTeamMembers($team->id);
     $eclipseResult = getEclipseMembers($repoName);
-   
-    /*  
-    echo "Github members: \n";
+    
+     echo "Github members: \n";
     print_r($githubResult);
     echo "Eclipse members: \n";
     print_r($eclipseResult);
-    */
+     
     
     echo "\n[Info] checking $github_organization/$repoName...\n";
     $toBeRemoved = compare($githubResult, $eclipseResult);
@@ -246,7 +245,6 @@ function getEclipseMembers($project) {
   $project = str_replace(".", "", $project);
   
   $url = USER_SERVICE . $project;
-  echo $url . "\n";
   $resultObj = $client->get($url);
 
   if (is_object($resultObj)) {
@@ -372,7 +370,6 @@ function addGithubTeamMember($login, $teamId) {
   }
   else {
   	echo "[ERROR] adding team member: $url\n";
-	print_r($resultObj);
   	return NULL;
   }
 }
