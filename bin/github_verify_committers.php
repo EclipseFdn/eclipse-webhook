@@ -362,7 +362,7 @@ function addGithubTeamMember($login, $teamId) {
     GITHUB_ENDPOINT_URL,
     'teams',
     $teamId,
-    'members',
+    'memberships',
     $login
   ));
   $resultObj = $client->put($url);
