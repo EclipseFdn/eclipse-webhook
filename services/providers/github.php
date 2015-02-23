@@ -32,7 +32,7 @@ class GithubClient extends RestClient
         $this->processStatus($request);
         break;
       default:
-      error_log('received unhandled github event: ' . $event);
+      $this->logger->error('received unhandled github event: ' . $event);
         break;
     }
   }
@@ -45,20 +45,20 @@ class GithubClient extends RestClient
   public function processPullRequest($request) {
     //get repo commits
     $json = json_decode(stripslashes($request));
-    error_log('handling pull request from '.$json->repository->full_name);
-    error_log('action: '.$json->action);
+    $this->logger->error('handling pull request from '.$json->repository->full_name);
+    $this->logger->error('action: '.$json->action);
     
     //don't do evaluation if pr is closing
     if ($json->action == 'close') { return; }
     
     $commits_url = $json->pull_request->url . '/commits';
     $statuses_url = $json->repository->statuses_url;
-    error_log('commits url '.$commits_url);
-    error_log('statuses url '.$statuses_url);
+    $this->logger->error('commits url '.$commits_url);
+    $this->logger->error('statuses url '.$statuses_url);
     
     //get commits
     $commits = $this->get($commits_url);
-    error_log('number of commits: ' . count($commits));
+    $this->logger->error('number of commits: ' . count($commits));
 
     //walk authors, testing CLA and Signed-off-by
     $this->users = array(
@@ -81,12 +81,12 @@ class GithubClient extends RestClient
         $this->evaluateSignature($commits[$i]->commit, $gh_committer);
       }
       //if there is no login, the user given in the git commit is not a valid github user
-      error_log('listed committer in commit: '.
+      $this->logger->error('listed committer in commit: '.
         $commits[$i]->commit->committer->name .
         '<'.$commits[$i]->commit->committer->email.'>');
       
       //Signed-off-by is found in the commit message
-      error_log('commit message: '.$commits[$i]->commit->message);      
+      $this->logger->error('commit message: '.$commits[$i]->commit->message);      
     }
     
     //see if any problems were found, make suitable message
@@ -122,7 +122,7 @@ class GithubClient extends RestClient
    */
   public function processStatus($request) {
     $json = json_decode(stripslashes($request));
-    error_log('processing repo status update with target_url:' . $json->target_url);
+    $this->logger->error('processing repo status update with target_url:' . $json->target_url);
     if(stripos(WEBHOOK_SERVICE_URL, $json->target_url) === FALSE) {
       //third party must have set status
       //TODO: get the pull request and re-evaluate
@@ -303,7 +303,7 @@ class GithubClient extends RestClient
    */
   private function setCommitStatus($url, $commit, $state, $message) {
     $url = str_replace('{sha}', $commit->sha, $url);
-    error_log('pull request status update url: '. $url);
+    $this->logger->error('pull request status update url: '. $url);
     
     //create a details url for the status message
     $service_url_parts = explode('/', WEBHOOK_SERVICE_URL);

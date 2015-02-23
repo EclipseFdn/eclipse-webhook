@@ -3,13 +3,17 @@
 * Base class for provider implementations
 * - provides curl interface. 
 */
+include('logger.php');
 
 class RestClient
 {
   private $endpoint;
+  protected $logger;
+  
   function __construct($endPoint)
   {
     $this->endPoint = $endPoint;
+    $this->logger = new Logger();
   }
 
   private function throttle($header) {
@@ -69,7 +73,8 @@ class RestClient
       $ch = curl_init(); 
       curl_setopt_array($ch, ($options + $defaults)); 
       if( ! $result = curl_exec($ch)) 
-      { 
+      {
+          $this->logger->error(curl_error($ch));
           trigger_error(curl_error($ch)); 
       } 
       curl_close($ch); 
@@ -106,6 +111,7 @@ class RestClient
           if ($code < 400) {
             return "{\"http_code\": $code}";
           }
+          $this->logger->error(curl_error($ch));
           trigger_error(curl_error($ch)); 
       }
       //getting headers, so we need offset to content
