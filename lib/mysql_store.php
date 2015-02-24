@@ -28,7 +28,7 @@ class MySQLStore
     // Create table
     $create_tbl = $this->db->query($create_table);
     if ($create_table) {
-      echo "[Info][MySQLStore] Github json table ok\n";
+      # Do nothing
     }
     else {
       echo "[Error] MySQL store failed to create github table";  
@@ -48,7 +48,7 @@ class MySQLStore
       return NULL;
     }
     //error_log("[INFO][MySQLStore] loading mysql data: $sql\n");
-    return json_decode($row['json'])|| NULL;
+    return json_decode($row['json']);
   }
   
   public function save($key, $data) {
