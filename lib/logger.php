@@ -34,7 +34,7 @@ class Logger
     // Create table
     $create_tbl = $this->db->query($create_table);
     if ($create_tbl) {
-      error_log("[Info][MySQLStore] Github log table ok");
+      //error_log("[Info][MySQLStore] Github log table ok");
     } else {
       error_log("[Error] MySQL store failed to create github table for log messages");  
     }

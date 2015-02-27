@@ -49,12 +49,14 @@ class GithubClient extends RestClient
     $this->logger->error('action: '.$json->action);
     
     //don't do evaluation if pr is closing
-    if ($json->action == 'close') { return; }
+    if ($json->action == 'closed') { return; }
     
     $commits_url = $json->pull_request->url . '/commits';
     $statuses_url = $json->repository->statuses_url;
+    $comments_url = $json->pull_request->comments_url;
     $this->logger->error('commits url '.$commits_url);
     $this->logger->error('statuses url '.$statuses_url);
+    $this->logger->error('comments url '.$comments_url);
     
     //get commits
     $commits = $this->get($commits_url);
@@ -103,6 +105,9 @@ class GithubClient extends RestClient
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
     
+    //add a comment to the PR in case third party bots overwrite status
+    $pullRequestComment = $this->addPullComment($comments_url, $pullRequestState, $pullRequestMessage);
+      
     //send mail to any configured addresses.
     $senderRecord = $this->getGithubUser($json->sender->login);
     $to = array();
@@ -323,6 +328,38 @@ class GithubClient extends RestClient
     } else {
       $payload->description = substr($message, 0, 137) . '...';
     }
+    
+    return $this->post($url, $payload);
+  }
+  
+  /*
+   * Function GithubClient::addPullComment
+   * @param string state - the state to apply [success, failure, pending]
+   * @param string message - comments to explain the status
+   * @desc POSTs a status message as a comment to the pull request so that
+   *       third-party status updates like CI bots will not erase
+   *       any sign that the webhook ran. 
+   */
+  private function addPullComment($url, $state, $message) {
+    $this->logger->error('pull request comment url: '. $url);
+    
+    //set a state emoji to make it obvious if there are problems
+    $emoji = '';
+    switch ($state) {
+      case 'success':
+        $emoji = ':white_check_mark: ';
+        break;
+      case 'pending':
+        $emoji = ':warning: ';
+        break;
+      default:
+        $emoji =  ':no_entry_sign: ';
+        break;
+    }
+    //create payload required for github comment post
+    //see https://developer.github.com/v3/issues/comments/#create-a-comment
+    $payload = new stdClass();
+    $payload->body = $emoji ."\n#### Eclipse validation results:\n". $message;
     
     return $this->post($url, $payload);
   }
