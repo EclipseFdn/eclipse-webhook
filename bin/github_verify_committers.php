@@ -207,8 +207,10 @@ function getTeam($project) {
     $github_organization,
     'teams'
   ));
+  # TODO: quick fix until we resolve Bug 461914 - API calls to lists must deal with pagination
+  $url .= "?per_page=100";
   $resultObj = $client->get($url);
-  
+
   $teamUrl;
   if (is_array($resultObj)) {
     for ($i=0; $i < count($resultObj); $i++) { 
