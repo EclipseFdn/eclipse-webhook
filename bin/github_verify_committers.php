@@ -202,7 +202,7 @@ for ($i=0; $i < count($github_projects); $i++) {
 /* get a github team, given an organization and repo. */
 /* create a team if none exists */
 function getTeam($project) {
-  global $github_organization, $client;
+  global $github_organization, $client, $logger;
   $teamName = $github_organization . '-' . $project;
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
@@ -244,7 +244,7 @@ function getTeam($project) {
 
 /* return an array of eclipse foundation members given a project name */
 function getEclipseMembers($project) {
-  global $client;
+  global $client, $logger;
   global $ldap_client;
   $members = array();
 
@@ -279,7 +279,7 @@ function getEclipseMembers($project) {
 
 /* return an array of github team members */
 function getGithubTeamMembers($teamId) {
-  global $github_organization, $client;
+  global $github_organization, $client, $logger;
   $members  = array();
   
   $url = implode('/', array(
@@ -310,7 +310,7 @@ function getGithubTeamMembers($teamId) {
 }
 /* return an array of collaborators given a repo */
 function getGithubCollaborators($repository) {
-  global $github_organization, $client;
+  global $github_organization, $client, $logger;
   $repo_collaborators = array();
   
   $url = implode('/', array(
@@ -345,7 +345,7 @@ function getGithubCollaborators($repository) {
 
 /* remove an unknown github collaborator from the team */
 function removeGithubTeamMember($login, $teamId) {
-  global $client, $userCache;
+  global $client, $userCache, $logger;
 
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
@@ -367,7 +367,7 @@ function removeGithubTeamMember($login, $teamId) {
 
 /* add a github user to a team */
 function addGithubTeamMember($login, $teamId) {
-  global $client;
+  global $client, $logger;
 
   $url = implode('/', array(
     GITHUB_ENDPOINT_URL,
@@ -394,7 +394,7 @@ function addGithubTeamMember($login, $teamId) {
 /* return details on a github user by searching on email address.*/
 /* if possible return a cached result to avoid search api hit */
 function findGithubUser($email) {
-  global $client, $userCache, $store;
+  global $client, $userCache, $store, $logger;
   if (isset($userCache[$email])) {
     return $userCache[$email];
   }
@@ -421,7 +421,7 @@ function findGithubUser($email) {
 /* this function also uses and sets the cache to avoid */
 /* multiple lookups for the same user */
 function getGithubUser($login) {
-  global $client, $userCache, $store;
+  global $client, $userCache, $store, $logger;
   
   if(isset($userCache[$login])) {
     return $userCache[$login];
