@@ -22,8 +22,10 @@ include_once('../lib/restclient.php');
 include_once('../lib/mysql_store.php');
 include_once('../lib/json_store.php');
 include_once('../lib/status_store.php');
+include_once('../lib/logger.php');
 
 $client = new RestClient(GITHUB_ENDPOINT_URL);
+$logger = new Logger();
 
 //Github record caching and persistence
 $userCache = array();
@@ -191,7 +193,8 @@ for ($i=0; $i < count($github_projects); $i++) {
     echo "\n";
     
   } else {
-    echo "[Error] unable to set up team for $repoName\n";
+    echo "[Error] getTeam returned no teams for $repoName\n";
+    $logger->error('getTeam returned no teams for ' . $repoName);
   }
 }
 
@@ -221,9 +224,11 @@ function getTeam($project) {
     }
   } else {
     echo "[Error] failed fetching teams: $url\n";
+    $logger->error("Failed to fetch teams: " . $url);
   }
   //no existing team, create one
   echo "[Info] creating new team for project $project\n";
+  $logger->info("Creating new team for project $project");
   $payload = new stdClass();
   $payload->name = $teamName;
   $payload->permission = "push";
@@ -232,10 +237,9 @@ function getTeam($project) {
   if ($resultObj) {
     return $resultObj;
   } else {
-    echo "[Error] failed creating team: $teamUrl\n";
+    echo "[Error] Failed to create team: $teamUrl\n";
+    $logger->error("Failed to create team: $teamUrl");
   }
-  
-  
 }
 
 /* return an array of eclipse foundation members given a project name */
@@ -243,10 +247,10 @@ function getEclipseMembers($project) {
   global $client;
   global $ldap_client;
   $members = array();
-  
+
   # strip "." from project shortname (exception for vert.x)
   $project = str_replace(".", "", $project);
-  
+
   $url = USER_SERVICE . $project;
   echo $url . "\n";
   $resultObj = $client->get($url);
@@ -299,6 +303,7 @@ function getGithubTeamMembers($teamId) {
     }
   } else {
     echo "[Error] fetching team members: $url\n";
+    $logger->error("Error fetching team members: $url");
   }
   
   return $members;
@@ -332,6 +337,7 @@ function getGithubCollaborators($repository) {
     }
   } else {
     echo "[ERROR] fetching committers: $url\n";
+    $logger->error("Error etching committers: $url");
   }
   
   return $repo_collaborators;
@@ -353,6 +359,9 @@ function removeGithubTeamMember($login, $teamId) {
     return $resultObj;
   }
   echo "[ERROR] removing team member: $url\n";
+  if($resultObj) {
+    $logger->error("Error removing team member: $url Response: " . $resultObj->http_code);
+  }
   return NULL;
 }
 
@@ -373,9 +382,12 @@ function addGithubTeamMember($login, $teamId) {
     return $resultObj;
   }
   else {
-  	echo "[ERROR] adding team member: $url\n";
-	print_r($resultObj);
-  	return NULL;
+  echo "[ERROR] adding team member: $url\n";
+  if($resultObj) {
+    $logger->error("Error adding team member: $url Response: " . $resultObj->state);
+  }
+  print_r($resultObj);
+  return NULL;
   }
 }
 
