@@ -106,14 +106,16 @@ class GithubClient extends RestClient
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
     
-    //send mail to any configured addresses.
-    $senderRecord = $this->getGithubUser($json->sender->login);
-    $to = array();
-    if ($senderRecord && isset($senderRecord->email)) {
-      $to[] = $senderRecord->email;
+    //send mail to any configured addresses if the validation is unsuccessful
+    if($pullRequestState == "failure") {
+      $senderRecord = $this->getGithubUser($json->sender->login);
+      $to = array();
+      if ($senderRecord && isset($senderRecord->email)) {
+        $to[] = $senderRecord->email;
+      }
+      $this->emailNotification($to, $pullRequestMessage, $json);
     }
-    $this->emailNotification($to, $pullRequestMessage, $json);
-    
+
     //TODO: close pull request?
   }
   /*
