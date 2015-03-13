@@ -45,22 +45,23 @@ class GithubClient extends RestClient
   public function processPullRequest($request) {
     //get repo commits
     $json = json_decode(stripslashes($request));
-    $this->logger->error('handling pull request from '.$json->repository->full_name);
-    $this->logger->error('action: '.$json->action);
     
+    # fabricate ID for this transaction for logging purposes
+    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " ";
+    $this->logger->info($pr_id . 'NEW ' . $json->pull_request->html_url . ' ' . $json->action);
+
     //don't do evaluation if pr is closing
     if ($json->action == 'closed') { return; }
-    
+
     $commits_url = $json->pull_request->url . '/commits';
     $statuses_url = $json->repository->statuses_url;
     $comments_url = $json->pull_request->comments_url;
-    $this->logger->error('commits url '.$commits_url);
-    $this->logger->error('statuses url '.$statuses_url);
-    $this->logger->error('comments url '.$comments_url);
-    
+
     //get commits
     $commits = $this->get($commits_url);
-    $this->logger->error('number of commits: ' . count($commits));
+    $this->logger->info($pr_id . 'commits url '.$commits_url . ' number of commits: ' . count($commits));
+    # $this->logger->error('statuses url '.$statuses_url);
+    # $this->logger->error('comments url '.$comments_url);
 
     //walk authors, testing CLA and Signed-off-by
     $this->users = array(
@@ -83,18 +84,18 @@ class GithubClient extends RestClient
         $this->evaluateSignature($commits[$i]->commit, $gh_committer);
       }
       //if there is no login, the user given in the git commit is not a valid github user
-      $this->logger->error('listed committer in commit: '.
+      $this->logger->info($pr_id . 'listed committer in commit: '.
         $commits[$i]->commit->committer->name .
-        '<'.$commits[$i]->commit->committer->email.'>');
-      
+        ' <'.$commits[$i]->commit->committer->email.'>');
+
       //Signed-off-by is found in the commit message
-      $this->logger->error('commit message: '.$commits[$i]->commit->message);      
+      $this->logger->info($pr_id . 'commit message: '.$commits[$i]->commit->message);      
     }
-    
+
     //see if any problems were found, make suitable message
     $pullRequestState = $this->getPullRequestState();
     $pullRequestMessage = $this->composeStatusMessage();
-    
+
     //get statuses (so we can provide history of 3rd party statuses)
     $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
     $this->users['StatusHistory'] = $status_history;
