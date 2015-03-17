@@ -242,41 +242,46 @@ function getTeam($project) {
   }
 }
 
-/* return an array of eclipse foundation members given a project name */
+/* return an array of eclipse foundation members given a GitHub project name */
 function getEclipseMembers($project) {
   global $client, $logger;
   global $ldap_client;
   $members = array();
 
   # strip "." from project shortname (exception for vert.x)
-  $project = str_replace(".", "", $project);
+  $project_stripped = str_replace(".", "", $project);
 
+  # Fetch list of Organization teams, the repos and users in each 
   $url = USER_SERVICE . $project;
-  echo $url . "\n";
-  $resultObj = $client->get($url);
+  $orgTeamListObj = $client->get($url);
 
-  if (is_object($resultObj)) {
-    foreach(get_object_vars($resultObj) as $teamName => $content) {
-      if ($project == end(explode('-', $teamName))) {
-        //TODO: handle multiple repos per team
-        foreach($content->users as $user) {
-          $member = new stdClass();
-          if (defined('LDAP_HOST')) {
-            $member->login = $ldap_client->getGithubIDFromMail($user);
+  if (is_object($orgTeamListObj)) {
+    foreach(get_object_vars($orgTeamListObj) as $teamName => $repoUserObj) {
+
+      if(is_object($repoUserObj)) {
+        # Try to locate the $project in the list of repos
+        foreach($repoUserObj->repos as $repo) {
+          if ($project == end(explode('/', $repo)) || $project_stripped == end(explode('/', $repo))) {
+            foreach($repoUserObj->users as $user) {
+              $member = new stdClass();
+              if (defined('LDAP_HOST')) {
+                $member->login = $ldap_client->getGithubIDFromMail($user);
+              }
+              else {
+                $member->login = '';
+              }
+              $member->gitHubId = '';
+              $member->email = $user;
+              $members[] = $member;
+            }
           }
-          else {
-          	$member->login = '';
-          }
-          $member->gitHubId = '';
-          $member->email = $user;
-          $members[] = $member;
         }
       }
+
     }
   }
   return $members;
 }
-
 /* return an array of github team members */
 function getGithubTeamMembers($teamId) {
   global $github_organization, $client, $logger;
