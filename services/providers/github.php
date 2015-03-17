@@ -207,7 +207,7 @@ class GithubClient extends RestClient
    * @desc evaluate signature match in Signed-off-by against committer
      @desc Signed-off-by is found in the commit message 
    */
-  private function evaluateSignature($commit, $gh_login) {
+  private function evaluateSignature($commit, $gh_committer) {
     $email = $commit->committer->email;
     $gh_login = $gh_committer->login;
     
