@@ -246,6 +246,7 @@ function getTeam($project) {
 function getEclipseMembers($project) {
   global $client, $logger;
   global $ldap_client;
+  global $github_organization;
   $members = array();
 
   # strip "." from project shortname (exception for vert.x)
@@ -255,33 +256,56 @@ function getEclipseMembers($project) {
   $url = USER_SERVICE . $project;
   $orgTeamListObj = $client->get($url);
 
+  # stdClass Object
+  #  (
+  #    [eclipse-birt] => stdClass Object
+  #       (
+  #             [repos] => Array
+  #                (
+  #                    [0] => https://github.com/eclipse/birt
+  #                )
+  #             [users] => Array
+  #                (
+  #                    [0] => someone@someone.com
+  #                )
+  #       )
+  # )
+  
+
   if (is_object($orgTeamListObj)) {
     foreach(get_object_vars($orgTeamListObj) as $teamName => $repoUserObj) {
 
-      if(is_object($repoUserObj)) {
-        # Try to locate the $project in the list of repos
-        foreach($repoUserObj->repos as $repo) {
-          if ($project == end(explode('/', $repo)) || $project_stripped == end(explode('/', $repo))) {
-            foreach($repoUserObj->users as $user) {
-              $member = new stdClass();
-              if (defined('LDAP_HOST')) {
-                $member->login = $ldap_client->getGithubIDFromMail($user);
-              }
-              else {
-                $member->login = '';
-              }
-              $member->gitHubId = '';
-              $member->email = $user;
-              $members[] = $member;
+      # team naming convention is $organization-$project, as above
+      if($teamName == $github_organization . "-" . $project | $teamName == $github_organization . "-" . $project_stripped) {
+      	if(is_object($repoUserObj)) {
+          foreach($repoUserObj->users as $user) {
+            $member = new stdClass();
+            if (defined('LDAP_HOST')) {
+              $member->login = $ldap_client->getGithubIDFromMail($user);
             }
+            else {
+              $member->login = '';
+            }
+            $member->gitHubId = '';
+            $member->email = $user;
+            $members[] = $member;
           }
-        }
+      	}
+      	else {
+          echo "[Error] Team name $teamName does not have any users!\n";
+          $logger->error("Team name $teamName does not have any users!");
+      	}
       }
-
     }
+  }
+  else {
+    echo "[Error] fetching team members: $url\n";
+    $logger->error("Error fetching team members: $url");
   }
   return $members;
 }
+
+
 /* return an array of github team members */
 function getGithubTeamMembers($teamId) {
   global $github_organization, $client, $logger;
