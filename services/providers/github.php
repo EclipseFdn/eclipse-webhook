@@ -116,6 +116,17 @@ class GithubClient extends RestClient
       $this->emailNotification($to, $pullRequestMessage, $json);
     }
 
+    //add a comment to the pr with a link to an associated bug
+    //bug 462471 - link bugs from bug numbers
+    if ($json->action == 'opened') {
+      $title = $json->pull_request->title;
+      $organization = '';
+      if ($json->repository && $json->repository->organization) {
+        $organization = $json->repository->organization;
+      }
+      $pullRequestComment = $this->addBugLinkComment($comments_url, $title, $organization);
+    }
+    $this->callHooks('pull_request', $json);
     //TODO: close pull request?
   }
   /*
@@ -362,6 +373,56 @@ class GithubClient extends RestClient
     return $result;
   }
   
+  /*
+   * Function GithubClient::addBugLinkComment
+   * @param string title - pr title to parse for bug reference
+   * @param string organization - the bug tracker's organization 
+   * @desc POSTs a comment to the pull request containing a link to
+   *       a bug reference
+   */
+  private function addBugLinkComment($url, $title, $organization) {
+    $orgName = ($organization == '')?'eclipse':$organization; 
+    $this->logger->info('pull request comment url: '. $url);
+    $this->logger->info("looking for bug reference in: $title");
+    
+    //match ~ Bug: xxx or [xxx]
+    $re = "/[Bb]ug:?\s*#?(\d+)|\[(\d+)\]/";
+    $matches = array();
+    if (preg_match($re, $title, $matches) && count($matches) > 1) {
+      //bug: match will be matches[1], [xxx] match will be matches[2]
+      $nBug = count($matches) == 3 ? $matches[2]:$matches[1];
+      $link = "https://bugs.$orgName.org/bugs/show_bug.cgi?id=$nBug";
+      
+      //create payload required for github comment post
+      //see https://developer.github.com/v3/issues/comments/#create-a-comment
+      $payload = new stdClass();
+      $payload->body = "Issue tracker reference:\n". $link;
+   
+      return $this->post($url, $payload);
+    };
+    
+    return false;
+  }
+  
+  /*
+   * Function GithubClient::callHooks
+   * @param string event - the event type used to determine which hooks to call
+   * @desc generically passes pr to scripts in the hooks directory based on action
+   *       This is designed to be used for service specific actions.
+   *       see bug: 462471
+   */
+  private function callHooks($event, $json) {
+    $hookName = str_replace(array('/','\\','.'),'', $event.'_'.$json->action);
+    $fileName = "./providers/hooks/$hookName.".php;
+    $functionName = $hookName.'_hook';
+    if (file_exists($fileName)) {
+      include($fileName);
+      if (is_callable($functionName)) {
+        $this->logger->info("invoking custom hook function: $functionName");
+        call_user_func($functionName, $json);
+      }
+    }
+  }
 
   /*
    * Function GithubClient::getGithubUser
