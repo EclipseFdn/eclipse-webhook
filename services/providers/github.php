@@ -11,12 +11,15 @@ include_once('../lib/restclient.php');
 include_once('../lib/mysql_store.php');
 include_once('../lib/json_store.php');
 include_once('../lib/status_store.php');
+include_once('../lib/organization/organization.php');
+
 
 class GithubClient extends RestClient
 {
   private $users;
   private $statusDetailsKey;
-  
+  private $organization;
+
   /*
    * function: GithubClient::processRequest
    * @param string $request - json payload
@@ -43,69 +46,46 @@ class GithubClient extends RestClient
    *       also checks that Signed-off-by header is present and matches committer.
    */
   public function processPullRequest($request) {
-    //get repo commits
-    $json = json_decode(stripslashes($request));
+    global $github_organization;
     
+
+    $json = json_decode(stripslashes($request));
+    if ($json->action == 'closed') { return; }
+
+    # Create an organization object that will process rules specific to the organization
+    $this->organization = OrganizationFactory::build($github_organization);
+
     # fabricate ID for this transaction for logging purposes
     $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " ";
     $this->logger->info($pr_id . 'NEW ' . $json->pull_request->html_url . ' ' . $json->action);
 
-    //don't do evaluation if pr is closing
-    if ($json->action == 'closed') { return; }
 
     $commits_url = $json->pull_request->url . '/commits';
     $statuses_url = $json->repository->statuses_url;
     $comments_url = $json->pull_request->comments_url;
 
-    //get commits
+    //get commits for this PR
     $commits = $this->get($commits_url);
     $this->logger->info($pr_id . 'commits url '.$commits_url . ' number of commits: ' . count($commits));
-    # $this->logger->error('statuses url '.$statuses_url);
-    # $this->logger->error('comments url '.$comments_url);
 
-    //walk authors, testing CLA and Signed-off-by
-    $this->users = array(
-      'validCLA' => array(),
-      'invalidCLA' => array(),
-      'unknownCLA' => array(),
-      'validSignedOff' => array(),
-      'invalidSignedOff' => array(),
-      'unknownSignedOff' => array()
-    );
-    
-    $previous_committers = array();
-    for ($i=0; $i < count($commits); $i++) { 
-      //TODO: evaluate author as well or instead?
-      $committer = $commits[$i]->commit->committer;
-      $gh_committer = $commits[$i]->committer;
-      if (!in_array($committer->email, $previous_committers)) {
-        $previous_committers[] = $committer->email;
-        $this->evaluateCLA($committer, $gh_committer);
-        $this->evaluateSignature($commits[$i]->commit, $gh_committer);
-      }
-      //if there is no login, the user given in the git commit is not a valid github user
-      $this->logger->info($pr_id . 'listed committer in commit: '.
-        $commits[$i]->commit->committer->name .
-        ' <'.$commits[$i]->commit->committer->email.'>');
-
-      //Signed-off-by is found in the commit message
-      $this->logger->info($pr_id . 'commit message: '.$commits[$i]->commit->message);      
+	# process organization-specific rules for PR
+    $pullRequestState = "failure";
+    if($this->organization->validatePullRequest($json, $commits)) {
+		$pullRequestState = "success";
     }
 
-    //see if any problems were found, make suitable message
-    $pullRequestState = $this->getPullRequestState();
-    $pullRequestMessage = $this->composeStatusMessage();
+    $pullRequestMessage = $this->organization->composeStatusMessage();
 
     //get statuses (so we can provide history of 3rd party statuses)
     $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
     $this->users['StatusHistory'] = $status_history;
-    
+
     //persist the status locally so it can be accessed at the github details url
     $this->storeStatus();
-    
+
     //apply a new status to the pull request, targetting last commit.
     $result = $this->setCommitStatus($statuses_url, end($commits), $pullRequestState, $pullRequestMessage);
-    
+
     //send mail to any configured addresses if the validation is unsuccessful
     if($pullRequestState == "failure") {
       $senderRecord = $this->getGithubUser($json->sender->login);
@@ -176,77 +156,9 @@ class GithubClient extends RestClient
                'X-Mailer: PHP/' . phpversion();
     mail($recipients, $subject, $message, $headers);
   }
-  /*
-   * Function GithubClient::evaluateCLA
-   * @param object committer - github user who made the commit
-   * @desc evaluate CLA status against external service  
-   */
-  private function evaluateCLA($committer, $gh_committer) {
-    $email = $committer->email;
-    $gh_login = $gh_committer->login; // should perhaps use the numeric ID instead
 
-    $eclipse_cla_status = $this->curl_get(CLA_SERVICE . $email);
-    if ($eclipse_cla_status == '"TRUE"') {
-      array_push($this->users['validCLA'], $email);
-    } elseif ($eclipse_cla_status == '"FALSE"') {
-      $eclipse_cla_status = $this->curl_get(CLA_SERVICE . $gh_login); // prefix "GITHUB:" ?
-      if ($eclipse_cla_status == '"TRUE"') {
-      	array_push($this->users['validCLA'], $gh_login);
-      }
-      else {
-        array_push($this->users['invalidCLA'], $email);
-      }
-    } else {
-      array_push($this->users['unknownCLA'], $email);
-    }
-  }
-  
-  /*
-   * Function GithubClient::evaluateSignature
-   * @param object commit
-   * @desc evaluate signature match in Signed-off-by against committer
-     @desc Signed-off-by is found in the commit message 
-   */
-  private function evaluateSignature($commit, $gh_committer) {
-    $email = $commit->committer->email;
-    $gh_login = $gh_committer->login;
-    
-    //look Signed-off-by pattern:
-    $pattern = '/Signed-off-by:(.*)<(.*@.*)>$/m';
-    //signature is only valid if it matches committer
-    if (preg_match($pattern, $commit->message, $matches)) {
-      if ($matches[2] == $email) {
-        array_push($this->users['validSignedOff'], $email);
-      } 
-      elseif(trim($matches[1]) == $gh_login) {
-        array_push($this->users['validSignedOff'], $gh_login);
-      }
-      else {
-      	array_push($this->users['invalidSignedOff'], $gh_login);
-      }
-    } else {
-      //no Signed-off-by at all
-      array_push($this->users['unknownSignedOff'], $email);
-    }
-  }
-  
-  /*
-   * Function GithubClient::getPullRequestState
-   * @desc find the state for the entire message.
-   * @return string expected by github status api
-   */
-  private function getPullRequestState() {
-    if ((count($this->users['invalidSignedOff']) +
-         count($this->users['unknownSignedOff']) +
-         count($this->users['invalidCLA']) +
-         count($this->users['unknownCLA']) == 0) &&
-        (count($this->users['validCLA']) +
-         count($this->users['validSignedOff']) > 0)) {
-      return 'success';
-    }
-    return 'failure';
-  }
-  
+
+
   /*
    * Function GithubClient::storeStatus
    * @desc keep a record of the status to use in the details url on github
@@ -262,41 +174,6 @@ class GithubClient extends RestClient
   
     $this->statusDetailsKey = uniqid();
     return $provider->save($this->statusDetailsKey, $this->users); 
-  }
-  
-  /*
-   * Function GithubClient::composeStatusMessage
-   * @desc build the status description including specific users and faults
-   * @desc messages come from config/projects.php
-   */
-  private function composeStatusMessage() {
-    global $messages;
-    $parts = array();
-    
-    //list problems with corresponding users
-    if (count($this->users['invalidCLA'])) {
-      array_push($parts, $messages['badCLAs'] . implode(', ', $this->users['invalidCLA']));
-    }
-    if (count($this->users['unknownCLA'])) {
-      array_push($parts, $messages['unknownUsers'] . implode(', ', $this->users['unknownCLA']));
-    }
-    if (count($this->users['invalidSignedOff'])) {
-      array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['invalidSignedOff']));
-    }
-    if (count($this->users['unknownSignedOff'])) {
-      array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['unknownSignedOff']));
-    }
-    //add a summary message
-    if (count($parts)) {
-      array_unshift($parts, $messages['failure']);
-    } elseif (count($this->users['validCLA']) &&
-              count($this->users['validSignedOff'])) {
-      array_unshift($parts, $messages['success']);
-    } else {
-      array_unshift($parts, $messages['unknown']);
-    }
-    
-    return implode("\n", $parts);
   }
   
   /*
