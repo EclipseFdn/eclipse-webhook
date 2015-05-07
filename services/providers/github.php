@@ -79,6 +79,9 @@ class GithubClient extends RestClient
     $pullRequestMessage = $this->organization->composeStatusMessage();
     echo $pullRequestMessage;
 
+	# fetch the committer buckets from the organization, so we can add status
+    $this->users = $this->organization->getUsers();
+
     //get statuses (so we can provide history of 3rd party statuses)
     $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
     $this->users['StatusHistory'] = $status_history;
