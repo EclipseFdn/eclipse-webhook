@@ -23,7 +23,7 @@ class Eclipse extends Organization {
 		'validSignedOff' => array(),
 		'invalidSignedOff' => array(),
 		'unknownSignedOff' => array()
-    );
+	);
 	private $ldap_client;
 	
 	
@@ -63,7 +63,7 @@ class Eclipse extends Organization {
 		
 	}
 	
-	/** Validate Pull reques
+	/** Validate Pull request
 	 * 
 	 * @param Obj $pullRequestJSON, represented as an object
 	 * @param Obj $commitsJSON, represented as an object
@@ -88,13 +88,15 @@ class Eclipse extends Organization {
 					$this->evaluateSignature($commitsJSON[$i]->commit, $gh_committer);
 				}
 			}
-			//if there is no login, the user given in the git commit is not a valid github user
-			# $this->logger->info($pr_id . 'listed committer in commit: '.
-			#		$commitsJSON[$i]->commit->committer->name .
-			#		' <'.$commitsJSON[$i]->commit->committer->email.'>');
+			
+			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " ";
+			// if there is no login, the user given in the git commit is not a valid github user
+			$this->logger->info($pr_id . 'listed committer in commit: '.
+					$commitsJSON[$i]->commit->committer->name .
+					' <'.$commitsJSON[$i]->commit->committer->email.'>');
 		
 			//Signed-off-by is found in the commit message
-			# $this->logger->info($pr_id . 'commit message: '.$commits[$i]->commit->message);
+			$this->logger->info($pr_id . 'commit message: '.$commitsJSON[$i]->commit->message);
 		}
 		
 		if ((count($this->users['invalidSignedOff']) +
@@ -117,6 +119,9 @@ class Eclipse extends Organization {
 	function getCLAStatusFromGHLogin($ghLogin) {
 		$committerEmail = $this->ldap_client->getMailFromGithubID($ghLogin);
 		return $this->ldap_client->isMemberOfGroup($committerEmail, "eclipsecla");
+	}
+	public function getUsers() {
+		return $this->users;
 	}
 	
 
@@ -212,7 +217,7 @@ class Eclipse extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	private function getTeamByName($teamName) {
+	public function getTeamByName($teamName) {
 		$rValue = false;
 		foreach ($this->teamList as $team) {
 			if($team->teamName == $teamName) {
@@ -231,7 +236,7 @@ class Eclipse extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	private function getTeamByRepoName($repoName) {
+	public function getTeamByRepoName($repoName) {
 		$rValue = false;
 		foreach ($this->teamList as $team) {
 			foreach($team->getRepoList() as $repo) {
@@ -252,7 +257,7 @@ class Eclipse extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	private function isCommitterInTeam($committerEMail, $teamName) {
+	public function isCommitterInTeam($committerEMail, $teamName) {
 		$rValue = false;
 		$team = $this->getTeamByName($teamName);
 		
@@ -275,7 +280,7 @@ class Eclipse extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	private function isCommitterOfRepo($committerEMail, $repoName) {
+	public function isCommitterOfRepo($committerEMail, $repoName) {
 		$rValue = false;
 		$team = $this->getTeamByRepoName($repoName);
 

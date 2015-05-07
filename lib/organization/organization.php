@@ -40,6 +40,13 @@ class Organization {
 	private $teamList;
 	private $logger;
 	
+	# buckets used for classifying committers who pass/fail validation
+	private $users = array(
+		// 'validCommitter' => array(),
+		// 'validCLA' => array(),
+		// 'invalidCLA' => array(),
+	);
+	
 	/**
 	 * Define organization-specific rules 
 	 * @param Obj $pullRequestJSON represented as an object
