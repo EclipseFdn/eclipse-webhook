@@ -47,7 +47,7 @@ class GithubClient extends RestClient
    */
   public function processPullRequest($request) {
     global $github_organization;
-    
+
 
     $json = json_decode(stripslashes($request));
     if ($json->action == 'closed') { return; }
@@ -74,7 +74,10 @@ class GithubClient extends RestClient
 		$pullRequestState = "success";
     }
 
+	# create a response message for the web service, and send it back to the browser. This is helpful 
+	# for debugging and replaying PR payloads
     $pullRequestMessage = $this->organization->composeStatusMessage();
+    echo $pullRequestMessage;
 
     //get statuses (so we can provide history of 3rd party statuses)
     $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
@@ -101,6 +104,7 @@ class GithubClient extends RestClient
     if ($json->action == 'opened') {
       $title = $json->pull_request->title;
       $organization = '';
+      # todo: $json->repository->organization doesn't seem to exist
       if ($json->repository && $json->repository->organization) {
         $organization = $json->repository->organization;
       }
@@ -290,7 +294,7 @@ class GithubClient extends RestClient
    */
   private function callHooks($event, $json) {
     $hookName = str_replace(array('/','\\','.'),'', $event.'_'.$json->action);
-    $fileName = "./providers/hooks/$hookName.".php;
+    $fileName = "./providers/hooks/$hookName.php";
     $functionName = $hookName.'_hook';
     if (file_exists($fileName)) {
       include($fileName);

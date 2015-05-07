@@ -17,9 +17,6 @@ if (file_exists('../config/projects_local.php')) {
 	include_once('../config/projects.php');
 }
 include_once('../lib/restclient.php');
-include_once('../lib/mysql_store.php');
-include_once('../lib/json_store.php');
-include_once('../lib/status_store.php');
 include_once('../lib/logger.php');
 
 
@@ -42,5 +39,24 @@ class OrganizationFactory {
 class Organization {
 	private $teamList;
 	private $logger;
+	
+	/**
+	 * Define organization-specific rules 
+	 * @param Obj $pullRequestJSON represented as an object
+	 * @param Obj $commitsJSON represented as an object
+	 * @return boolean
+	 */
+	public function validatePullRequest($pullRequestJSON, $commitsJSON) {
+		return true;
+	}
+	
+	/**
+	 * Function composeStatusMessage
+	 * @desc build the status description including specific users and faults
+	 * @desc messages come from config/projects.php
+	 */
+	public function composeStatusMessage() {
+		return "All is well.";
+	}
 }
 ?>

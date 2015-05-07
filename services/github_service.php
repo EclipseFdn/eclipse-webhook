@@ -6,8 +6,8 @@
  *.
  */
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+# error_reporting(E_ALL);
+# ini_set('display_errors', 1);
 
 include_once('./providers/github.php');
 include_once('./cla_service.php');

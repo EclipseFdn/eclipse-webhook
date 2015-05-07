@@ -7,7 +7,8 @@
 * http://www.eclipse.org/legal/epl-v10.html
 *
 * Contributors:
-*    Denis Roy (Eclipse Foundation)- initial API and implementation
+*    Denis Roy (Eclipse Foundation) - initial API and implementation
+*    Zak James (zak.james@gmail.com)
 *******************************************************************************/
 
 # Basic functions for an Eclipse forge
@@ -85,7 +86,6 @@ class Eclipse extends Organization {
 					# Not a committer on the project -- check CLA and Signed-off-by
 					$this->evaluateCLA($committer, $gh_committer);
 					$this->evaluateSignature($commitsJSON[$i]->commit, $gh_committer);
-					$this->debug();
 				}
 			}
 			//if there is no login, the user given in the git commit is not a valid github user
