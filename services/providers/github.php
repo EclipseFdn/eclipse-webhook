@@ -52,11 +52,13 @@ class GithubClient extends RestClient
     $json = json_decode(stripslashes($request));
     if ($json->action == 'closed') { return; }
 
+    $this->statusDetailsKey = uniqid();
+    
     # Create an organization object that will process rules specific to the organization
     $this->organization = OrganizationFactory::build($github_organization);
 
     # fabricate ID for this transaction for logging purposes
-    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " ";
+    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey;
     $this->logger->info($pr_id . 'NEW ' . $json->pull_request->html_url . ' ' . $json->action);
 
 
@@ -70,7 +72,7 @@ class GithubClient extends RestClient
 
 	# process organization-specific rules for PR
     $pullRequestState = "failure";
-    if($this->organization->validatePullRequest($json, $commits)) {
+    if($this->organization->validatePullRequest($json, $commits, $this->statusDetailsKey)) {
 		$pullRequestState = "success";
     }
 
@@ -85,6 +87,7 @@ class GithubClient extends RestClient
     //get statuses (so we can provide history of 3rd party statuses)
     $status_history = $this->getCommitStatusHistory($statuses_url, end($commits));
     $this->users['StatusHistory'] = $status_history;
+    $this->users['StatusDetailKey'] = $this->statusDetailsKey;
 
     //persist the status locally so it can be accessed at the github details url
     $this->storeStatus();
@@ -190,7 +193,7 @@ class GithubClient extends RestClient
     }
     $provider = new StatusStore($store);
   
-    $this->statusDetailsKey = uniqid();
+    
     return $provider->save($this->statusDetailsKey, $this->users); 
   }
   

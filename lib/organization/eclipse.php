@@ -67,9 +67,10 @@ class Eclipse extends Organization {
 	 * 
 	 * @param Obj $pullRequestJSON, represented as an object
 	 * @param Obj $commitsJSON, represented as an object
+	 * @param string $statusDetailKey unique identifier for logging
 	 * @return boolean Pull request passes Eclipse validation
 	 */
-	public function validatePullRequest($pullRequestJSON, $commitsJSON) {
+	public function validatePullRequest($pullRequestJSON, $commitsJSON, $statusDetailKey) {
 		$rValue = false;
 		
 		$previous_committers = array();
@@ -80,7 +81,7 @@ class Eclipse extends Organization {
 			if (!in_array($committer->email, $previous_committers)) {
 				$previous_committers[] = $committer->email;
 				if($this->isCommitterOfRepo($committer->email, $pullRequestJSON->repository->full_name)) {
-					array_push($this->users['validCommitter'], $email);
+					array_push($this->users['validCommitter'], $committer->email);
 				}
 				else {
 					# Not a committer on the project -- check CLA and Signed-off-by
@@ -89,7 +90,7 @@ class Eclipse extends Organization {
 				}
 			}
 			
-			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " ";
+			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " Key: " . $statusDetailKey;
 			// if there is no login, the user given in the git commit is not a valid github user
 			$this->logger->info($pr_id . 'listed committer in commit: '.
 					$commitsJSON[$i]->commit->committer->name .
@@ -102,7 +103,8 @@ class Eclipse extends Organization {
 		if ((count($this->users['invalidSignedOff']) +
 			count($this->users['unknownSignedOff']) +
 			count($this->users['invalidCLA']) == 0) &&
-				(count($this->users['validCLA']) +
+				(count($this->users['validCommitter']) +
+				count($this->users['validCLA']) +
 				count($this->users['validSignedOff']) > 0)) {
 			$rValue = true;
 		}
@@ -170,7 +172,8 @@ class Eclipse extends Organization {
 		//add a summary message
 		if (count($parts)) {
 			array_unshift($parts, $messages['failure']);
-		} elseif (count($this->users['validCLA']) &&
+		} elseif (count($this->users['validCommitter']) &&
+				count($this->users['validCLA']) &&
 				count($this->users['validSignedOff'])) {
 			array_unshift($parts, $messages['success']);
 		} else {
@@ -239,8 +242,9 @@ class Eclipse extends Organization {
 	public function getTeamByRepoName($repoName) {
 		$rValue = false;
 		foreach ($this->teamList as $team) {
+			# We are looking for $repoName (eclipse/birt) within the list of repo URLs (https://github.com/eclipse/birt).
 			foreach($team->getRepoList() as $repo) {
-				if($repo == $repoName) {
+				if($this->strEndsWith($repo, $repoName)) {
 					$rValue = $team;
 					break;
 				}
@@ -282,8 +286,8 @@ class Eclipse extends Organization {
 	 */
 	public function isCommitterOfRepo($committerEMail, $repoName) {
 		$rValue = false;
+		$this->logger->info("Checking $repoName for $committerEMail");
 		$team = $this->getTeamByRepoName($repoName);
-
 		if($team !== FALSE) {
 			foreach ($team->getCommitterList() as $committer) {
 				if($committer == $committerEMail) {

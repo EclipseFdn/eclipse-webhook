@@ -51,9 +51,10 @@ class Organization {
 	 * Define organization-specific rules 
 	 * @param Obj $pullRequestJSON represented as an object
 	 * @param Obj $commitsJSON represented as an object
+	 * @param string $statusDetailKey unique identifier for logging
 	 * @return boolean
 	 */
-	public function validatePullRequest($pullRequestJSON, $commitsJSON) {
+	public function validatePullRequest($pullRequestJSON, $commitsJSON, $statusDetailKey) {
 		return true;
 	}
 	
@@ -64,6 +65,17 @@ class Organization {
 	 */
 	public function composeStatusMessage() {
 		return "All is well.";
+	}
+	
+	
+	/**
+	 * Does a string(haystack) end with a string (needle) ? 
+	 * @param string $haystack String to search in
+	 * @param string $needle String to search for
+	 * @return boolean
+	 */
+	public function strEndsWith($haystack, $needle) {
+		return $needle != "" && (($temp = strlen($haystack) - strlen($needle)) >= 0 && strpos($haystack, $needle, $temp) !== FALSE);
 	}
 }
 ?>
