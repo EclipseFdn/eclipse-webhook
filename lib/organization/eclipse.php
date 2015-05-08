@@ -31,7 +31,7 @@ class Eclipse extends Organization {
 		# Fetch list of Organization teams, the repos and users in each
 		
 		$client = new RestClient(GITHUB_ENDPOINT_URL);
-		$logger = new Logger();
+		$this->logger = new Logger();
 		$this->objPMIjson = $client->get(USER_SERVICE);
 		$this->teamList = array();
 		
@@ -159,13 +159,13 @@ class Eclipse extends Organization {
 	
 		//list problems with corresponding users
 		if (count($this->users['invalidCLA'])) {
-			array_push($parts, $messages['badCLAs'] . implode(', ', $this->users['invalidCLA']));
+			array_push($parts, $messages['badCLAs'] . " " . implode(', ', $this->users['invalidCLA']));
 		}
 		if (count($this->users['invalidSignedOff'])) {
-			array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['invalidSignedOff']));
+			array_push($parts, $messages['badSignatures'] . " " . implode(', ', $this->users['invalidSignedOff']));
 		}
 		if (count($this->users['unknownSignedOff'])) {
-			array_push($parts, $messages['badSignatures'] . implode(', ', $this->users['unknownSignedOff']));
+			array_push($parts, $messages['badSignatures'] . " " . implode(', ', $this->users['unknownSignedOff']));
 		}
 		//add a summary message
 		if (count($parts)) {
