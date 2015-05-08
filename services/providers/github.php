@@ -58,7 +58,7 @@ class GithubClient extends RestClient
     $this->organization = OrganizationFactory::build($github_organization);
 
     # fabricate ID for this transaction for logging purposes
-    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey;
+    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey . " ";
     $this->logger->info($pr_id . 'NEW ' . $json->pull_request->html_url . ' ' . $json->action);
 
 

@@ -90,7 +90,7 @@ class Eclipse extends Organization {
 				}
 			}
 			
-			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " Key: " . $statusDetailKey;
+			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " Key: " . $statusDetailKey . " ";
 			// if there is no login, the user given in the git commit is not a valid github user
 			$this->logger->info($pr_id . 'listed committer in commit: '.
 					$commitsJSON[$i]->commit->committer->name .

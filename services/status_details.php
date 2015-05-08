@@ -67,7 +67,6 @@ ul {
    //format problems with corresponding users
    $parts = array();
    addStatus($messages['badCLAs'], $status->invalidCLA);
-   addStatus($messages['unknownUsers'], $status->unknownCLA);
    addStatus($messages['badSignatures'], $status->invalidSignedOff);
    addStatus($messages['badSignatures'], $status->unknownSignedOff);
    
