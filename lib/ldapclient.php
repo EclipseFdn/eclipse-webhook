@@ -11,11 +11,12 @@
 *******************************************************************************/
 
 class LDAPClient {
-	private $host, $dn;
+	private $host, $dn, $ds;
 
 	function __construct($host, $dn) {
 		$this->host = $host;
 		$this->dn = $dn;
+		$this->ds = $this->connect();
 	}
 	
 	private function connect() {
@@ -26,8 +27,8 @@ class LDAPClient {
 	}
 	 
 	#This function performs a look up of a given email address
-	public function getGithubIDFromMail($mail) {
-		$ds = $this->connect();
+	public function getGithubLoginFromMail($mail) {
+		$ds = $this->ds;
 		if ($ds) {
 			if(preg_match("/@/", $mail)) {
 				#  Perform a lookup.
@@ -55,8 +56,8 @@ class LDAPClient {
 	 * @param string $gh
 	 * @return string email, or false 
 	 */
-	public function getMailFromGithubID($gh) {
-		$ds = $this->connect();
+	public function getMailFromGithubLogin($gh) {
+		$ds = $this->ds;
 		if ($ds) {
 			#  Perform a lookup.
 			$sr = ldap_search($ds, $this->dn, "(employeeType=GITHUB:$gh)", array("mail"));
@@ -78,7 +79,7 @@ class LDAPClient {
 	 * @since 2015-05-06
 	 */
 	private function getUIDFromMail($_mail) {
-		$ds = $this->connect();
+		$ds = $this->ds;
 		if ($ds) {
 			if(preg_match("/@/", $_mail)) {
 				#  Perform a lookup.
@@ -100,7 +101,7 @@ class LDAPClient {
 	 * @since 2015-05-06
 	 */
 	private function getDNFromMail($_mail) {
-		$ds = $this->connect();
+		$ds = $this->ds;
 		if ($ds) {
 			if(preg_match("/@/", $_mail)) {
 				#  Perform a lookup.
@@ -121,7 +122,7 @@ class LDAPClient {
 	 * @return boolean
 	 */
 	public function isMemberOfGroup($mail, $group) {
-		$ds = $this->connect();
+		$ds = $this->ds;
 		$rValue = FALSE;
 		if ($ds) {
 			if(preg_match("/@/", $mail)) {

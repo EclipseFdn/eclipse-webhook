@@ -25,11 +25,12 @@ class Eclipse extends Organization {
 		'unknownSignedOff' => array()
 	);
 	private $ldap_client;
+	private $debug;
 	
 	
-	function __construct() {
+	function __construct($debug) {
+		$this->debug = $debug;
 		# Fetch list of Organization teams, the repos and users in each
-		
 		$client = new RestClient(GITHUB_ENDPOINT_URL);
 		$this->logger = new Logger();
 		$this->objPMIjson = $client->get(USER_SERVICE);
@@ -53,13 +54,13 @@ class Eclipse extends Organization {
 				}
 				else {
 					echo "[Error] Team name $teamName does not have any users!\n";
-					$logger->error("Team name $teamName does not have any users!");
+					$this->logger->error("Team name $teamName does not have any users!");
 				}
 				array_push($this->teamList, $team);
 			}
 		}
 		
-		# $this->debug();
+		if($this->debug) $this->debug();
 		
 	}
 	
@@ -112,14 +113,14 @@ class Eclipse extends Organization {
 	}
 	
 	function getCommitterLoginFromEMail($committerEmail) {
-		$member->login = $this->ldap_client->getGithubIDFromMail($user);
+		$member->login = $this->ldap_client->getGithubLoginFromMail($user);
 	}
 	
 	function getCLAStatusFromEMail($committerEmail) {
 		return $this->ldap_client->isMemberOfGroup($committerEmail, "eclipsecla");
 	}
 	function getCLAStatusFromGHLogin($ghLogin) {
-		$committerEmail = $this->ldap_client->getMailFromGithubID($ghLogin);
+		$committerEmail = $this->ldap_client->getMailFromGithubLogin($ghLogin);
 		return $this->ldap_client->isMemberOfGroup($committerEmail, "eclipsecla");
 	}
 	public function getUsers() {
@@ -223,7 +224,7 @@ class Eclipse extends Organization {
 	public function getTeamByName($teamName) {
 		$rValue = false;
 		foreach ($this->teamList as $team) {
-			if($team->teamName == $teamName) {
+			if($team->getTeamName() == $teamName) {
 				$rValue = $team;
 				break;
 			}
@@ -298,49 +299,13 @@ class Eclipse extends Organization {
 		}
 		return $rValue;
 	}
-
-
-	function debug() {
-		echo "Calling Debug. Dumping object contents of Eclipse";
-		print_r($this);
-	}
-}
-
-
-
-
-
-
-class Team {
-	private $teamName;
-	private $repoList;
-	private $committerList;
 	
-	function __construct($teamName) {
-		$this->teamName = $teamName;
-		$this->repoList = array();
-		$this->committerList = array();
-	}
-	
-	function addRepo($repoUrl) {
-		array_push($this->repoList, $repoUrl);
-	}
-	function addCommitter($committerEmail) {
-		array_push($this->committerList, $committerEmail);
-	}
-
-	
-	public function getTeamName() {
-		return $this->teamName;
-	}
-	public function getRepoList() {
-		return $this->repoList;
-	}
-	public function getCommitterList() {
-		return $this->committerList;
-	}
-	function debug() {
-		print_r($this);
+	/**
+	 * Return list of teams (array of Team objects)
+	 * @return multitype:
+	 */
+	public function getTeamList() {
+		return $this->teamList;
 	}
 }
 

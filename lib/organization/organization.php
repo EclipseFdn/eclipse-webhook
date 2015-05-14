@@ -18,17 +18,18 @@ if (file_exists('../config/projects_local.php')) {
 }
 include_once('../lib/restclient.php');
 include_once('../lib/logger.php');
+include_once('../lib/organization/team.php');
 
 
 class OrganizationFactory {
-	public static function build($organization) {
+	public static function build($organization, $debug=FALSE) {
 		$class = ucfirst($organization);
 		$classfile = '../lib/organization/' . $organization . '.php';
 		if(file_exists($classfile)) {
 			include ($classfile);
 		}
 		if(class_exists($organization)) {
-			return new $class();
+			return new $class($debug);
 		}
 		else {
 			throw new Exception("Invalid organization: " . $organization);
@@ -39,6 +40,7 @@ class OrganizationFactory {
 class Organization {
 	private $teamList;
 	private $logger;
+	private $debug;
 	
 	# buckets used for classifying committers who pass/fail validation
 	private $users = array(
@@ -47,6 +49,10 @@ class Organization {
 		// 'invalidCLA' => array(),
 	);
 	
+	function __construct($debug) {
+		$this->debug = $debug;
+	}
+
 	/**
 	 * Define organization-specific rules 
 	 * @param Obj $pullRequestJSON represented as an object
@@ -76,6 +82,11 @@ class Organization {
 	 */
 	public function strEndsWith($haystack, $needle) {
 		return $needle != "" && (($temp = strlen($haystack) - strlen($needle)) >= 0 && strpos($haystack, $needle, $temp) !== FALSE);
+	}
+
+	public function debug() {
+		echo "Calling Debug. Dumping object contents of object.\n";
+		print_r($this);
 	}
 }
 ?>

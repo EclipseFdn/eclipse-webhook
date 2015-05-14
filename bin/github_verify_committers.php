@@ -13,15 +13,12 @@
 
 
 /*
- * command line eclipse project sync for gitub repo teams
+ * command line project sync for gitub repo teams
  *
- * TODO: refactor this to inherit a base class that abstracts the 2nd service
  *
  * @desc: checks for or creates a github team for each Eclipse project, then
  *        checks or attaches the github repo to the team and verifies that team
  *        members list matches Eclipse. Github users are added/removed as needed.
- *        A dual-keyed (email and github login) cache attemps to reduce number of
- *        github lookups needed across projects.
  */
 //set a long execution time since we may have to sleep to wait for api limit reset
 ini_set('max_execution_time', '600');
@@ -36,476 +33,186 @@ include_once('../lib/mysql_store.php');
 include_once('../lib/json_store.php');
 include_once('../lib/status_store.php');
 include_once('../lib/logger.php');
+include_once('../lib/organization/organization.php');
 
 $client = new RestClient(GITHUB_ENDPOINT_URL);
 $logger = new Logger();
 
-//Github record caching and persistence
-$userCache = array();
 $store = null;
 if (defined('MYSQL_DBNAME')) {
-  $store = new MySQLStore();  
+	$store = new MySQLStore();
 } else {
-  $store = new JSONStore();
+	$store = new JSONStore();
 }
 
 $ldap_client = null;
 if (defined('LDAP_HOST')) {
 	include_once('../lib/ldapclient.php');
 	$ldap_client = new LDAPClient(LDAP_HOST, LDAP_DN);
-	echo "[Info] using " . LDAP_HOST . " as fallback ID source.\n";
 }
 $provider = new StatusStore($store);
 
 if (!defined('GITHUB_TOKEN')) {
-  exit('You must provide a Github access token environment variable to verify committers.');
+	exit('You must provide a Github access token environment variable to verify committers.');
 }
+
+global $github_organization;
 
 //search for command line passed github organization to monitor
-$options = getopt("o::dh", array('organization::', 'dry-run', 'help'));
+$options = getopt("dh", array('dry-run', 'help'));
 if (isset($options['help']) || isset($options['h'])) {
-  exit('usage: php '.__FILE__."\n\t-o=[Github organization] (may be set in config file)\n\t-d (dry-run - no github changes)\n\t-h (help - this message)\n");
-}
-if (isset($options['organization'])) {
-  $github_organization = $options['organization'];
-}
-if (isset($options['o'])) {
-  $github_organization = $options['o'];
+	exit('usage: php '.__FILE__."\n\t-d (dry-run - no github changes)\n\t-h (help - this message)\n");
 }
 if (isset($options['dry-run']) || isset($options['d'])) {
-  $dry_run = true;
-  echo("Dry run mode active -- no changes will be made to Github.\n");
+	$dry_run = true;
+	echo("Dry run mode active -- no changes will be made to Github.\n");
 }
 if ($github_organization == '') {
-  exit("You must provide a Github organization as a target for committer verification in the configuration file, or on the command line as -o=[name] or --organization=[name]\n");
+	exit("You must provide a Github organization as a target for committer verification in the configuration file.\n");
 }
 
-if (!count($github_projects)) {
-  //if the projects list is empty, enumerate all organization repos
-  error_log('[Info] no github repositories listed in config/projects.php, enumerating all repos.');
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'orgs',
-    $github_organization,
-    'repos'
-  ));
+# create an organization for org-specific rules and functions
+$org_forge = OrganizationFactory::build($github_organization, true);
+$org_github = OrganizationFactory::build("github", true); # debug on or off
 
-  $result = $client->get($url);
-  if (is_array($result)) {
-    for ($i=0; $i < count($result); $i++) { 
-      $github_projects[] = $result[$i]->name;
-    }
-  }
-}
-$nProjects = count($github_projects);
-$suffix = $nProjects == 1?'':'s';
-echo("[Info] verifying $nProjects project$suffix\n");
+foreach($org_forge->getTeamList() as $org_forge_team) {
+	echo "Looping through team [" . $org_forge_team->getTeamName() . "]\n";
 
-//iterate over repos list, getting collaborators list
-$collaborators = array();
-$members = array();
+	$org_github_team = $org_github->getTeamByName($org_forge_team->getTeamName());
+	if($org_github_team === FALSE) {
+		echo "Missing Github team: [" . $org_forge_team->getTeamName() . "]\n";
 
-for ($i=0; $i < count($github_projects); $i++) {
-  $repoName = $github_projects[$i];
-  
-  //test for team with format matching eclipse members returned format
-  $team = getTeam($repoName);
-  if (isset($team)) {
-    //test for repo within team
-    $teamHasRepo = false;
-    $repos = $client->get($team->repositories_url);
-    if (is_array($repos)) {
-      foreach($repos as $repo) {
-        if ($repo->name == $repoName) {
-          $teamHasRepo = true;
-          echo "[Info] found repo '$repoName' associated with team ".$team->name."\n";
-        }
-      }
-    }
-    if (!$teamHasRepo) {
-      //add repo to team
-      $url = implode('/', array(
-        GITHUB_ENDPOINT_URL,
-        'teams',
-        $team->id,
-        'repos',
-        $github_organization,
-        $repoName
-      ));
-      $repoCreated = $client->put($url);
-      //TODO: handle repo creation error
-    }
-    
-    //compare membership lists
-    $githubResult = getGithubTeamMembers($team->id);
-    $eclipseResult = getEclipseMembers($repoName);
-   
-    /*  
-    echo "Github members: \n";
-    print_r($githubResult);
-    echo "Eclipse members: \n";
-    print_r($eclipseResult);
-    */
-    
-    echo "\n[Info] checking $github_organization/$repoName...\n";
-    $toBeRemoved = compare($githubResult, $eclipseResult);
-    $toBeAdded = compare($eclipseResult, $githubResult);
-      
-    //report discrepancies
-    if (count($toBeRemoved)) {
-      echo "\n[Info] ";
-      echo (isset($messages['missing_team_members']) ? $messages['missing_team_
-        members'] :
-      'Github repo team members missing from eclipse project (to be removed): ');  
-      echo "\n";
-    } 
-    foreach ($toBeRemoved as $person) {
-      $email = $person->email;
-      echo ('[Info] remove ' . $email !== ''?$email:"login: ".$person->login) . "\n";
-      if (!$dry_run) {
-        if (!isset($person->login)) {
-          //try searching github
-          $person = findGithubUser($person->email);
-        }
-        if ($person && $person->login) {
-          $removeResult = removeGithubTeamMember($person->login, $team->id);
-          if ($removeResult && $removeResult->http_code == 204) {
-            echo "[Info] user removed.\n";
-          } else {
-            echo ("[Error] unable to remove user. Github response: ".
-               isset($removeResult->http_code)?$removeResult->http_code:'unknown'. "\n");
-          }
-        } else {
-          echo "[Error] could not remove unknown github user ".$email."\n";
-        }
-      }
-    }
-    if (count($toBeAdded)) {
-      echo "\n[Info] ";
-      echo (isset($messages['missing_members']) ? $messages['missing_members'] :
-      'Eclipse project members missing from Github repo team (to be added): ');
-      echo "\n";
-      
-      foreach ($toBeAdded as $person) {
-        $email = $person->email;
-        echo "[Info] add $email [GITHUB:" . $person->login . "]\n";
-        if (!$dry_run) {
-          if (!isset($person->login)) {
-            //try searching github
-            echo "[Info] searching for Github user ".$email."\n";
-            $person = findGithubUser($email);
-          }
-          if ($person && $person->login) {
-            $addResult = addGithubTeamMember($person->login, $team->id);
-          } else {
-            echo "[Info] could not add. User unknown to Github: ".$email."\n";
-          }
-        }
-      }
-    } 
-    echo "\n";
-    
-  } else {
-    echo "[Error] getTeam returned no teams for $repoName\n";
-    $logger->error('getTeam returned no teams for ' . $repoName);
-  }
+		# copy team, but clear GitHub committer list since it doesn't exist
+		$org_github_team = $org_forge_team;
+		$org_github_team->clearCommitterList();
+		if(!$dry_run) {
+			$org_github->addTeam($org_github_team);
+		}
+	}
+	
+	foreach($org_forge_team->getRepoList() as $repoUrl) {
+		$repoName = $org_github->getRepoName($repoUrl);
+		echo "    Looping through repo [" . $repoName . "]\n";
+		if(!$org_github->teamHasRepoUrl($org_github_team, $repoUrl)) {
+			echo "    Missing Github repo: [$repoUrl]\n";
+
+			$url = implode('/', array(GITHUB_ENDPOINT_URL, 'teams',	$org_github_team->getTeamID(), 'repos', $repoName));
+			if(!$dry_run) {
+				$repoCreated = $client->put($url);
+				print_r($repoCreated);
+			}
+			# TODO: handle repo creation error
+		}
+	}
+
+	//compare membership lists
+	$githubResult = $org_github_team->getCommitterList();
+	$eclipseResult = $org_forge_team->getCommitterList();
+
+
+	/* echo "Github members: \n";
+	print_r($githubResult);
+	echo "Eclipse members: \n";
+	print_r($eclipseResult);  
+	*/
+
+	echo "\n[Info] checking $repoName...\n";
+	$toBeRemoved = compare($githubResult, $eclipseResult);
+	$toBeAdded = compare($eclipseResult, $githubResult);
+
+	# report discrepancies
+	if (count($toBeRemoved)) {
+		echo "\n[Info] ";
+		echo (isset($messages['missing_team_members']) ? $messages['missing_team_members'] :
+		'Github repo team members missing from ' . $github_organization . ' project (to be removed): ');  
+		echo "\n";
+	}
+	foreach ($toBeRemoved as $email) {
+		$gh_login = $org_github->getGithubLoginFromEMail($email);
+		if($gh_login) {
+			echo ("[Info] removing $email from team: " . $org_github_team->getTeamName() . " [" . $org_github_team->getTeamID() . "]: ");
+			if (!$dry_run) {
+				$removeResult = removeGithubTeamMember($gh_login, $org_github_team->getTeamID());
+				echo isset($removeResult->http_code) ? $removeResult->http_code : (isset($removeResult->state) ? $removeResult->state : $removeResult->message);
+			}
+			echo "\n";
+		}
+		else {
+			echo ("[Info] cannot remove $email from team: " . $org_github_team->getTeamName() . " - no Github Login!\n");
+		}
+	}
+
+	if (count($toBeAdded)) {
+		echo "\n[Info] ";
+		echo (isset($messages['missing_members']) ? $messages['missing_members'] :
+		$github_organization . ' project members missing from Github repo team (to be added): ');
+		echo "\n";
+
+		foreach ($toBeAdded as $email) {
+			$gh_login = $org_github->getGithubLoginFromEMail($email);
+			if($gh_login) {
+				echo ("[Info] inviting $email ($gh_login) to team: " . $org_github_team->getTeamName() . " [" . $org_github_team->getTeamID() . "]: ");
+				if (!$dry_run) {
+					$addResult = addGithubTeamMember($gh_login, $org_github_team->getTeamID());
+					echo isset($addResult->http_code) ? $addResult->http_code : (isset($addResult->state) ? $addResult->state : $addResult->message);
+					# TODO: warn user that they have a pending invitation?
+					# Lots of people seem to miss the GitHub invitation
+					# https://developer.github.com/v3/orgs/teams/#get-team-membership
+				}
+				echo "\n";
+			}
+			else {
+				echo ("[Info] cannot add $email to team: " . $org_github_team->getTeamName() . " - no Github Login attached to $github_organization account!\n");
+			}
+		}
+	}
+	echo "\n";
 }
 
-
-/* get a github team, given an organization and repo. */
-/* create a team if none exists */
-function getTeam($project) {
-  global $github_organization, $client, $logger;
-  $teamName = $github_organization . '-' . $project;
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'orgs',
-    $github_organization,
-    'teams'
-  ));
-  # TODO: quick fix until we resolve Bug 461914 - API calls to lists must deal with pagination
-  $url .= "?per_page=100";
-  $resultObj = $client->get($url);
-
-  $teamUrl;
-  if (is_array($resultObj)) {
-    for ($i=0; $i < count($resultObj); $i++) { 
-      if ($resultObj[$i]->name == $teamName) {
-        $teamUrl = $resultObj[$i]->url;
-        return $client->get($teamUrl);
-      };
-    }
-  } else {
-    echo "[Error] failed fetching teams: $url\n";
-    $logger->error("Failed to fetch teams: " . $url);
-  }
-  //no existing team, create one
-  echo "[Info] creating new team for project $project\n";
-  $logger->info("Creating new team for project $project");
-  $payload = new stdClass();
-  $payload->name = $teamName;
-  $payload->permission = "push";
-  $payload->repo_names = array($github_organization . '/' . $project);
-  $resultObj = $client->post($url, $payload);
-  if ($resultObj) {
-    return $resultObj;
-  } else {
-    echo "[Error] Failed to create team: $teamUrl\n";
-    $logger->error("Failed to create team: $teamUrl");
-  }
-}
-
-/* return an array of eclipse foundation members given a GitHub project name */
-function getEclipseMembers($project) {
-  global $client, $logger;
-  global $ldap_client;
-  global $github_organization;
-  $members = array();
-
-  # strip "." from project shortname (exception for vert.x)
-  $project_stripped = str_replace(".", "", $project);
-
-  # Fetch list of Organization teams, the repos and users in each 
-  $url = USER_SERVICE . $project;
-  $orgTeamListObj = $client->get($url);
-
-  # stdClass Object
-  #  (
-  #    [eclipse-birt] => stdClass Object
-  #       (
-  #             [repos] => Array
-  #                (
-  #                    [0] => https://github.com/eclipse/birt
-  #                )
-  #             [users] => Array
-  #                (
-  #                    [0] => someone@someone.com
-  #                )
-  #       )
-  # )
-  
-
-  if (is_object($orgTeamListObj)) {
-    foreach(get_object_vars($orgTeamListObj) as $teamName => $repoUserObj) {
-
-      # team naming convention is $organization-$project, as above
-      if($teamName == $github_organization . "-" . $project | $teamName == $github_organization . "-" . $project_stripped) {
-      	if(is_object($repoUserObj)) {
-          foreach($repoUserObj->users as $user) {
-            $member = new stdClass();
-            if (defined('LDAP_HOST')) {
-              $member->login = $ldap_client->getGithubIDFromMail($user);
-            }
-            else {
-              $member->login = '';
-            }
-            $member->gitHubId = '';
-            $member->email = $user;
-            $members[] = $member;
-          }
-      	}
-      	else {
-          echo "[Error] Team name $teamName does not have any users!\n";
-          $logger->error("Team name $teamName does not have any users!");
-      	}
-      }
-    }
-  }
-  else {
-    echo "[Error] fetching team members: $url\n";
-    $logger->error("Error fetching team members: $url");
-  }
-  return $members;
-}
-
-
-/* return an array of github team members */
-function getGithubTeamMembers($teamId) {
-  global $github_organization, $client, $logger;
-  $members  = array();
-  
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'teams',
-    $teamId,
-    'members'
-  ));
-  $resultObj = $client->get($url);
-  if (is_array($resultObj)) {
-    for ($i=0; $i < count($resultObj); $i++) { 
-      $login = $resultObj[$i]->login;
-      $id = $resultObj[$i]->id;
-      $userRecord = getGithubUser($login);
-
-      $member = new stdClass();
-      $member->login = $login;
-      $member->gitHubId = intval($id);  # not really needed
-      $member->email = isset($userRecord->email) ? $userRecord->email : '';
-      $members[] = $member;
-    }
-  } else {
-    echo "[Error] fetching team members: $url\n";
-    $logger->error("Error fetching team members: $url");
-  }
-  
-  return $members;
-}
-/* return an array of collaborators given a repo */
-function getGithubCollaborators($repository) {
-  global $github_organization, $client, $logger;
-  $repo_collaborators = array();
-  
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'repos',
-    $github_organization,
-    $repository,
-    'collaborators'
-  ));
-  $resultObj = $client->get($url);
-  
-  if (is_array($resultObj)) {
-    for ($i=0; $i < count($resultObj); $i++) { 
-      $login = $resultObj[$i]->login;
-      $id = $resultObj[$i]->id;
-      $userRecord = getGithubUser($login);
-
-      $collaborator = new stdClass();
-      $collaborator->login = $login;
-      $collaborator->gitHubId = intval($id);
-      $collaborator->email = $userRecord->email;
-      
-      $repo_collaborators[] = $collaborator;
-    }
-  } else {
-    echo "[ERROR] fetching committers: $url\n";
-    $logger->error("Error etching committers: $url");
-  }
-  
-  return $repo_collaborators;
-}
 
 /* remove an unknown github collaborator from the team */
 function removeGithubTeamMember($login, $teamId) {
-  global $client, $userCache, $logger;
+	global $client, $logger;
 
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'teams',
-    $teamId,
-    'members',
-    $login
-  ));
-  $resultObj = $client->delete($url);
-  if ($resultObj && ($resultObj->http_code == 204)) {
-    return $resultObj;
-  }
-  echo "[ERROR] removing team member: $url\n";
-  if($resultObj) {
-    $logger->error("Error removing team member: $url Response: " . $resultObj->http_code);
-  }
-  return NULL;
+	$url = implode('/', array(
+		GITHUB_ENDPOINT_URL,
+		'teams',
+		$teamId,
+		'members',
+		$login
+	));
+	return $client->delete($url);
 }
 
 /* add a github user to a team */
 function addGithubTeamMember($login, $teamId) {
-  global $client, $logger;
+	global $client, $logger;
 
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'teams',
-    $teamId,
-    'memberships',
-    $login
-  ));
-  $resultObj = $client->put($url);
-
-  if ($resultObj && ($resultObj->http_code == 204)) {
-    return $resultObj;
-  }
-  else {
-  echo "[ERROR] adding team member: $url\n";
-  if($resultObj) {
-    $logger->error("Error adding team member: $url Response: " . $resultObj->state);
-  }
-  print_r($resultObj);
-  return NULL;
-  }
+	$url = implode('/', array(
+		GITHUB_ENDPOINT_URL,
+		'teams',
+		$teamId,
+		'memberships',
+		$login
+	));
+	return $client->put($url);
 }
-
-/* return details on a github user by searching on email address.*/
-/* if possible return a cached result to avoid search api hit */
-function findGithubUser($email) {
-  global $client, $userCache, $store, $logger;
-  if (isset($userCache[$email])) {
-    return $userCache[$email];
-  }
-  $json = $store->load($email);
-  if ($json) {
-    return $json;
-  }
-  //search on github
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'search',
-    'users?q='.$email.'+in:email'
-  ));
-  $resultObj = $client->get($url);
-  //only accept if there is no ambiguity (1 hit)
-  if ($resultObj->total_count == 1) {
-    //get the user so we return and cache the full record:
-    //the search return is missing some fields
-    return getGithubUser($resultObj->items[0]->login);
-  }
-  return NULL;
-}
-/* return details on a github collaborator */
-/* this function also uses and sets the cache to avoid */
-/* multiple lookups for the same user */
-function getGithubUser($login) {
-  global $client, $userCache, $store, $logger;
-  
-  if(isset($userCache[$login])) {
-    return $userCache[$login];
-  }
-  
-  $url = implode('/', array(
-    GITHUB_ENDPOINT_URL,
-    'users',
-    $login
-  ));
-  $resultObj = $client->get($url);
-  
-  if ($resultObj) {
-    //memoize and store so we don't have to check again
-    $userCache[$login] = $resultObj;
-    if (isset($resultObj->email)) {
-      $userCache[$resultObj->email] = $resultObj;
-      if (!$store->load($resultObj->email)) {
-        $store->save($resultObj->email, json_encode($resultObj));
-      }
-    }
-    return $resultObj;
-  }
-  echo "error fetching committer: $url\n";
-  return NULL;
-}
-
 
 /* check for discrepancies between services */
 function compare($groupA, $groupB) {
-  return array_udiff($groupA, $groupB, 'compare_members');
+	return array_udiff($groupA, $groupB, 'compare_members');
 }
 
 function compare_members($a, $b) {
-  # If we use LDAP, only consider the login... otherwise, hope the GitHub 
-  # users have exposed their email address.
-  if (defined('LDAP_HOST')) {
-    return (strcasecmp($a->login, $b->login));
-  }
-  else {
-  	return (strcasecmp($a->email, $b->email));
-  }
+	# If we use LDAP, only consider the login... otherwise, hope the GitHub 
+	# users have exposed their email address.
+	if (defined('LDAP_HOST')) {
+		# return (strcasecmp($a->login, $b->login));
+		return (strcasecmp($a, $b));
+	}
+	else {
+		return (strcasecmp($a->email, $b->email));
+	}
 }
 
 ?>
