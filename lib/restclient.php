@@ -151,6 +151,7 @@ class RestClient
     $json = ($this->curl_get($url));
     return json_decode(stripslashes($json));
   }
+
   public function put($url) {
     $extra_headers = array(
       CURLOPT_CUSTOMREQUEST => 'PUT',
@@ -159,6 +160,7 @@ class RestClient
     $json = ($this->curl_get($url, NULL, $extra_headers));
     return json_decode(stripslashes($json));
   }
+
   public function delete($url) {
     $extra_headers = array(CURLOPT_CUSTOMREQUEST => 'DELETE');
     $json = ($this->curl_get($url, NULL, $extra_headers));

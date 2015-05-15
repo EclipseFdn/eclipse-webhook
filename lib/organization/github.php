@@ -11,6 +11,8 @@
 *    Zak James (zak.james@gmail.com)
 *******************************************************************************/
 
+include_once('../services/providers/github.php');
+
 # Basic functions for a GitHub organization
 class Github extends Organization {
 
@@ -36,7 +38,7 @@ class Github extends Organization {
 		if($github_organization == "") {
 			exit("USAGE: You must provide a Github organization as a target for webhook installation in the configuration file.\n");
 		}
-		$client = new RestClient(GITHUB_ENDPOINT_URL);
+		$client = new GithubClient(GITHUB_ENDPOINT_URL);
 		$this->logger = new Logger();
 
 		$this->teamList = array();
@@ -47,8 +49,6 @@ class Github extends Organization {
 				$github_organization,
 				'teams'
 		));
-		# TODO: quick fix until we resolve Bug 461914 - API calls to lists must deal with pagination - in $client->get?
-		$url .= "?per_page=100";
 		if($this->debug) echo "GH Org: calling org teams api $url \n"; 
 		$this->GHTeamsjson = $client->get($url);
 
@@ -68,7 +68,7 @@ class Github extends Organization {
 
 			# get list of repos and users
 			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members?per_page=100';
+			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members';
 			if($this->debug) echo "    GH Org: calling members api: $url \n";
 			$GHTeamMembersjson = $client->get($url);
 			foreach($GHTeamMembersjson as $GHTeamMember) {
@@ -94,7 +94,7 @@ class Github extends Organization {
 			}
 			
 			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos?per_page=100';
+			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos';
 			if($this->debug) echo "    GH Org: calling team repos api $url \n";
 			$GHTeamReposjson = $client->get($url);
 			foreach($GHTeamReposjson as $GHTeamRepo) {
