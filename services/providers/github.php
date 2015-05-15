@@ -1,4 +1,16 @@
 <?php
+/*******************************************************************************
+* Copyright (c) 2013-2015 Eclipse Foundation and others.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+*    Zak James (zak.james@gmail.com) - Initial implementation
+*    Denis Roy (Eclipse Foundation)
+*******************************************************************************/
+
 /**
 * Github model - provides functions for interacting with GitHub API
 */
@@ -58,7 +70,7 @@ class GithubClient extends RestClient
     $this->organization = OrganizationFactory::build($github_organization);
 
     # fabricate ID for this transaction for logging purposes
-    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey;
+    $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey . " ";
     $this->logger->info($pr_id . 'NEW ' . $json->pull_request->html_url . ' ' . $json->action);
 
 
