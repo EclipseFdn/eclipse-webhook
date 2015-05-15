@@ -72,8 +72,8 @@ if ($github_organization == '') {
 }
 
 # create an organization for org-specific rules and functions
-$org_forge = OrganizationFactory::build($github_organization, true);
-$org_github = OrganizationFactory::build("github", true); # debug on or off
+$org_forge = OrganizationFactory::build($github_organization, DEBUG_MODE);
+$org_github = OrganizationFactory::build("github", DEBUG_MODE); # debug on or off
 
 foreach($org_forge->getTeamList() as $org_forge_team) {
 	echo "Looping through team [" . $org_forge_team->getTeamName() . "]\n";

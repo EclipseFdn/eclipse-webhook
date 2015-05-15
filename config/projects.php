@@ -115,4 +115,7 @@ define('MYSQL_DBNAME', NULL);
 define('LDAP_HOST', NULL);
 define('LDAP_DN', NULL);
 
+# Turn on various debugging output
+define('DEBUG_MODE', false);
+
 ?>

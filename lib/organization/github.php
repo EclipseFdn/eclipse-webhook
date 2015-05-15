@@ -11,7 +11,7 @@
 *    Zak James (zak.james@gmail.com)
 *******************************************************************************/
 
-# Basic functions for an Eclipse forge
+# Basic functions for a GitHub organization
 class Github extends Organization {
 
 	private $GHTeamsjson;  ## See below for visual example
@@ -30,8 +30,12 @@ class Github extends Organization {
 
 	function __construct($debug) {
 		$this->debug = $debug;
+		
 		# Fetch list of Organization teams, the repos and users in each
 		global $github_organization;
+		if($github_organization == "") {
+			exit("USAGE: You must provide a Github organization as a target for webhook installation in the configuration file.\n");
+		}
 		$client = new RestClient(GITHUB_ENDPOINT_URL);
 		$this->logger = new Logger();
 
@@ -129,7 +133,7 @@ class Github extends Organization {
 		return $rValue;
 	}
 
-	/** Get team object based on the repo name (eclipse/birt)
+	/** Get Team object based on the repo name (eclipse/birt)
 	 * 
 	 * @param string $repoName
 	 * @return Team object, or false if not found
@@ -150,7 +154,7 @@ class Github extends Organization {
 		return $rValue;
 	}
 
-	/** Get team object based on the repo url
+	/** Get Team object based on the repo url
 	 *
 	 * @param string $repoUrl
 	 * @return Team object, or false if not found
@@ -207,6 +211,22 @@ class Github extends Organization {
 			}
 		}
 		return $rValue;
+	}
+	
+	/**
+	 * Return all repos owned by this organization
+	 * @return Array list of repo URLs
+	 * @since 2015-05-15
+	 * @author droy
+	 */
+	public function getAllRepos() {
+		$rValue = array();
+		foreach($this->getTeamList() as $team) {
+			foreach($team->getRepoList() as $repo) {
+				array_push($rValue, $repo);
+			}
+		}
+		return array_unique($rValue);
 	}
 	
 	/** Is Committer in a team
