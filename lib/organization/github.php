@@ -11,6 +11,8 @@
 *    Zak James (zak.james@gmail.com)
 *******************************************************************************/
 
+include_once('../services/providers/github.php');
+
 # Basic functions for a GitHub organization
 class Github extends Organization {
 
@@ -36,7 +38,7 @@ class Github extends Organization {
 		if($github_organization == "") {
 			exit("USAGE: You must provide a Github organization as a target for webhook installation in the configuration file.\n");
 		}
-		$client = new RestClient(GITHUB_ENDPOINT_URL);
+		$client = new GithubClient(GITHUB_ENDPOINT_URL);
 		$this->logger = new Logger();
 
 		$this->teamList = array();
@@ -48,7 +50,7 @@ class Github extends Organization {
 				'teams'
 		));
 		if($this->debug) echo "GH Org: calling org teams api $url \n"; 
-		$this->GHTeamsjson = $client->getPaginated($url);
+		$this->GHTeamsjson = $client->get($url);
 
 		if (defined('LDAP_HOST')) {
 			include_once('../lib/ldapclient.php');
@@ -68,7 +70,7 @@ class Github extends Organization {
 			# TODO: deal with pages...  in $client->get?
 			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members';
 			if($this->debug) echo "    GH Org: calling members api: $url \n";
-			$GHTeamMembersjson = $client->getPaginated($url);
+			$GHTeamMembersjson = $client->get($url);
 			foreach($GHTeamMembersjson as $GHTeamMember) {
 				# Convert GitHub's login to an email address
 				# GitHub users don't necessarily expose their email addresses
@@ -94,7 +96,7 @@ class Github extends Organization {
 			# TODO: deal with pages...  in $client->get?
 			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos';
 			if($this->debug) echo "    GH Org: calling team repos api $url \n";
-			$GHTeamReposjson = $client->getPaginated($url);
+			$GHTeamReposjson = $client->get($url);
 			foreach($GHTeamReposjson as $GHTeamRepo) {
 				if($this->debug) echo "        Found team repo [" . $GHTeamRepo->html_url . "]\n";
 				$team->addRepo($GHTeamRepo->html_url);

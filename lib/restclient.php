@@ -151,30 +151,6 @@ class RestClient
     $json = ($this->curl_get($url));
     return json_decode(stripslashes($json));
   }
-  
-  /**
-   * Fetch results in a paginated fashion.  See: https://developer.github.com/v3/#pagination
-   * @param String $url
-   * @return Array of JSON encoded objects
-   * @since 2015-05-15
-   * @author droy
-   */
-  public function getPaginated($url) {
-	$rValue = array();
-	$page = 1;
-	$per_page = 100; # TODO: put this in the config!
-	$morepages = true;
-
-	while($morepages) {
-		# TODO: API docs recommend against creating own pagination URLs, use Links header instead
-		$thisurl = $url . "?page=$page&per_page=$per_page";
-		$json = json_decode($this->curl_get($thisurl));
-		$morepages = count($json) == $per_page;
-		$rValue = array_merge($rValue, $json);
-		$page++;
-  	}
-  	return $rValue;
-  }
 
   public function put($url) {
     $extra_headers = array(

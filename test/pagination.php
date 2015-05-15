@@ -26,9 +26,9 @@ if (file_exists('../config/projects_local.php')) {
 } else {
   include('../config/projects.php');
 }
-include('../lib/restclient.php');
+include('../services/providers/github.php');
 
-$client = new RestClient(GITHUB_ENDPOINT_URL);
+$client = new GithubClient(GITHUB_ENDPOINT_URL);
 
 $url = implode('/', array(
 				GITHUB_ENDPOINT_URL,
@@ -36,7 +36,7 @@ $url = implode('/', array(
 				$github_organization,
 				'teams'
 		));
-$json = $client->getPaginated($url);
+$json = $client->getd($url);
 print_r($json);
 echo "\nJSON objects: " . count($json);
 ?>
