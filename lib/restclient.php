@@ -166,6 +166,7 @@ class RestClient
 	$morepages = true;
 
 	while($morepages) {
+		# TODO: API docs recommend against creating own pagination URLs, use Links header instead
 		$thisurl = $url . "?page=$page&per_page=$per_page";
 		$json = json_decode($this->curl_get($thisurl));
 		$morepages = count($json) == $per_page;

@@ -47,10 +47,8 @@ class Github extends Organization {
 				$github_organization,
 				'teams'
 		));
-		# TODO: quick fix until we resolve Bug 461914 - API calls to lists must deal with pagination - in $client->get?
-		$url .= "?per_page=100";
 		if($this->debug) echo "GH Org: calling org teams api $url \n"; 
-		$this->GHTeamsjson = $client->get($url);
+		$this->GHTeamsjson = $client->getPaginated($url);
 
 		if (defined('LDAP_HOST')) {
 			include_once('../lib/ldapclient.php');
@@ -68,9 +66,9 @@ class Github extends Organization {
 
 			# get list of repos and users
 			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members?per_page=100';
+			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members';
 			if($this->debug) echo "    GH Org: calling members api: $url \n";
-			$GHTeamMembersjson = $client->get($url);
+			$GHTeamMembersjson = $client->getPaginated($url);
 			foreach($GHTeamMembersjson as $GHTeamMember) {
 				# Convert GitHub's login to an email address
 				# GitHub users don't necessarily expose their email addresses
@@ -94,9 +92,9 @@ class Github extends Organization {
 			}
 			
 			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos?per_page=100';
+			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos';
 			if($this->debug) echo "    GH Org: calling team repos api $url \n";
-			$GHTeamReposjson = $client->get($url);
+			$GHTeamReposjson = $client->getPaginated($url);
 			foreach($GHTeamReposjson as $GHTeamRepo) {
 				if($this->debug) echo "        Found team repo [" . $GHTeamRepo->html_url . "]\n";
 				$team->addRepo($GHTeamRepo->html_url);
