@@ -63,6 +63,13 @@ define('TMP_FILE_LOCATION', '/tmp');
 $github_organization = '';
 
 /*
+ * How many items to fetch per page? No reason not to use the max
+ * to reduce api calls
+ * https://developer.github.com/v3/#pagination
+ */
+$github_pagination_items = 100;
+
+/*
 * dry run mode -- if true, users are not moved when running the
 * github_verify_commiters utility. The utility will report
 * discrepancies and exit.
