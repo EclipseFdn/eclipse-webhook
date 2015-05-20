@@ -149,7 +149,7 @@ class RestClient
    */
   public function get($url) {
     $json = ($this->curl_get($url));
-    return json_decode(stripslashes($json));
+    return json_decode(urldecode($json));
   }
 
   public function put($url) {
