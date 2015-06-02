@@ -179,7 +179,7 @@ class GithubClient extends RestClient
     }
     
     $message = 'There was a problem validating pull request ' .
-                $json->pull_request->url . "\r\n\n" .
+                $json->pull_request->html_url . "\r\n\n" .
                 $message .
                 $historyMessage;
     

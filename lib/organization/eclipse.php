@@ -191,14 +191,14 @@ class Eclipse extends Organization {
 	* @desc Signed-off-by is found in the commit message
 	*/
 	private function evaluateSignature($commit, $gh_committer) {
-		$email = $commit->committer->email;
+		$email = strtolower($commit->committer->email);
 		$gh_login = $gh_committer->login;
 	
 		//look Signed-off-by pattern:
 		$pattern = '/Signed-off-by:(.*)<(.*@.*)>$/m';
 		//signature is only valid if it matches committer
 		if (preg_match($pattern, $commit->message, $matches)) {
-			if ($matches[2] == $email) {
+			if (strtolower($matches[2]) == $email) {
 				array_push($this->users['validSignedOff'], $email);
 			}
 			elseif(trim($matches[1]) == $gh_login) {
@@ -265,10 +265,14 @@ class Eclipse extends Organization {
 	public function isCommitterInTeam($committerEMail, $teamName) {
 		$rValue = false;
 		$team = $this->getTeamByName($teamName);
-		
+
+		# Althought the email RFC states that email addresses
+		# are case-sensitive let's not treat them as such
+		$committerEMail = strtolower($committerEMail);
+
 		if($team !== FALSE) {
 			foreach ($team->getCommitterList() as $committer) {
-				if($committer == $committerEMail) {
+				if(strtolower($committer) == $committerEMail) {
 					$rValue = true;
 					break;
 				}
@@ -287,11 +291,16 @@ class Eclipse extends Organization {
 	 */
 	public function isCommitterOfRepo($committerEMail, $repoName) {
 		$rValue = false;
+
+		# Althought the email RFC states that email addresses 
+		# are case-sensitive let's not treat them as such
+		$committerEMail = strtolower($committerEMail);
+
 		$this->logger->info("Checking $repoName for $committerEMail");
 		$team = $this->getTeamByRepoName($repoName);
 		if($team !== FALSE) {
 			foreach ($team->getCommitterList() as $committer) {
-				if($committer == $committerEMail) {
+				if(strtolower($committer) == $committerEMail) {
 					$rValue = true;
 					break;
 				}
