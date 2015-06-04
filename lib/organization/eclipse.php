@@ -73,7 +73,7 @@ class Eclipse extends Organization {
 	 */
 	public function validatePullRequest($pullRequestJSON, $commitsJSON, $statusDetailKey) {
 		$rValue = false;
-		
+
 		$previous_committers = array();
 		for ($i=0; $i < count($commitsJSON); $i++) {
 			//TODO: evaluate author as well or instead?
@@ -85,22 +85,33 @@ class Eclipse extends Organization {
 					array_push($this->users['validCommitter'], $committer->email);
 				}
 				else {
-					# Not a committer on the project -- check CLA and Signed-off-by
-					$this->evaluateCLA($committer, $gh_committer);
-					$this->evaluateSignature($commitsJSON[$i]->commit, $gh_committer);
+					# Check if the GitHUb login is a committer.  Could just be an email mismatch
+					# We avoid looking up the email address of the GH Login earlier,
+					# since the previous isCommitterOfRepo() may have succeeded without the LDAP hit
+					# See: https://bugs.eclipse.org/bugs/show_bug.cgi?id=469140
+					$gh_committer_email = $this->ldap_client->getMailFromGithubLogin($gh_committer->login);
+
+					if($this->isCommitterOfRepo($gh_committer_email, $pullRequestJSON->repository->full_name)) {
+						array_push($this->users['validCommitter'], $committer->email);
+					}
+					else {
+						# Not a committer on the project -- check CLA and Signed-off-by
+						$this->evaluateCLA($committer, $gh_committer);
+						$this->evaluateSignature($commitsJSON[$i]->commit, $gh_committer);
+					}
 				}
 			}
-			
+
 			$pr_id = "PULL REQUEST:" . $pullRequestJSON->repository->full_name . ":" . $pullRequestJSON->number . " Key: " . $statusDetailKey . " ";
 			// if there is no login, the user given in the git commit is not a valid github user
 			$this->logger->info($pr_id . 'listed committer in commit: '.
 					$commitsJSON[$i]->commit->committer->name .
 					' <'.$commitsJSON[$i]->commit->committer->email.'>');
-		
+
 			//Signed-off-by is found in the commit message
 			$this->logger->info($pr_id . 'commit message: '.$commitsJSON[$i]->commit->message);
 		}
-		
+
 		if ((count($this->users['invalidSignedOff']) +
 			count($this->users['unknownSignedOff']) +
 			count($this->users['invalidCLA']) == 0) &&
@@ -111,7 +122,7 @@ class Eclipse extends Organization {
 		}
 		return $rValue;
 	}
-	
+
 	function getCommitterLoginFromEMail($committerEmail) {
 		$member->login = $this->ldap_client->getGithubLoginFromMail($user);
 	}
@@ -296,7 +307,7 @@ class Eclipse extends Organization {
 		# are case-sensitive let's not treat them as such
 		$committerEMail = strtolower($committerEMail);
 
-		$this->logger->info("Checking $repoName for $committerEMail");
+		$this->logger->info("Checking $repoName for [$committerEMail]");
 		$team = $this->getTeamByRepoName($repoName);
 		if($team !== FALSE) {
 			foreach ($team->getCommitterList() as $committer) {
