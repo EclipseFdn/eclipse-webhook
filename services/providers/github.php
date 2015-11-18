@@ -65,9 +65,9 @@ class GithubClient extends RestClient
     if ($json->action == 'closed') { return; }
 
     $this->statusDetailsKey = uniqid();
-    
+
     # Create an organization object that will process rules specific to the organization
-    $this->organization = OrganizationFactory::build($github_organization);
+    $this->organization = OrganizationFactory::build($github_organization, DEBUG_MODE);
 
     # fabricate ID for this transaction for logging purposes
     $pr_id = "PULL REQUEST:" . $json->repository->full_name . ":" . $json->number . " Key: " . $this->statusDetailsKey . " ";
@@ -82,10 +82,10 @@ class GithubClient extends RestClient
     $commits = $this->get($commits_url);
     $this->logger->info($pr_id . 'commits url '.$commits_url . ' number of commits: ' . count($commits));
 
-	# process organization-specific rules for PR
+    # process organization-specific rules for PR
     $pullRequestState = "failure";
     if($this->organization->validatePullRequest($json, $commits, $this->statusDetailsKey)) {
-		$pullRequestState = "success";
+        $pullRequestState = "success";
     }
 
 	# create a response message for the web service, and send it back to the browser. This is helpful 
@@ -177,12 +177,12 @@ class GithubClient extends RestClient
       }
       $historyMessage .= implode("\n", $items);
     }
-    
+
     $message = 'There was a problem validating pull request ' .
                 $json->pull_request->html_url . "\r\n\n" .
                 $message .
                 $historyMessage;
-    
+
     $subject = '[Eclipse-Github][Validation Error] '. $json->repository->full_name;
     $headers = 'From: noreply@eclipse.org' . "\r\n" .
                'Cc: ' . ADMIN_EMAIL . "\r\n" .
@@ -204,11 +204,11 @@ class GithubClient extends RestClient
       $store = new JSONStore();
     }
     $provider = new StatusStore($store);
-  
-    
+
+
     return $provider->save($this->statusDetailsKey, $this->users); 
   }
-  
+
   /*
    * Function GithubClient::setCommitStatus
    * @param object commit - target commit for status
@@ -219,30 +219,30 @@ class GithubClient extends RestClient
   private function setCommitStatus($url, $commit, $state, $message) {
     $url = str_replace('{sha}', $commit->sha, $url);
     $this->logger->error('pull request status update url: '. $url);
-    
+
     //create a details url for the status message
     $service_url_parts = explode('/', WEBHOOK_SERVICE_URL);
     array_pop($service_url_parts);
     array_push($service_url_parts, 'status_details.php?id=' . $this->statusDetailsKey);
     $details_url = implode('/', $service_url_parts);
-    
+
     //create payload required for github status post
     //see http://developer.github.com/v3/repos/statuses/#create-a-status
     $payload = new stdClass();
     $payload->state = $state;
     $payload->target_url = $details_url;
     $payload->context = 'ip-validation';
-    
+
     //TODO: handle github description limit of 140 chars gracefully
     if (strlen($message) < 140) {
       $payload->description = $message;
     } else {
       $payload->description = substr($message, 0, 137) . '...';
     }
-    
+
     return $this->post($url, $payload);
   }
-  
+
   /*
    * Function GithubClient::getCommitStatusHistory
    * @param object commit - commit to query for status
@@ -252,7 +252,7 @@ class GithubClient extends RestClient
     $result = array();
     $url = str_replace('{sha}', $commit->sha, $url);
     $json = $this->get($url);
-    
+
     for ($i=0; $i < count($json); $i++) {
       $status = $json[$i];
 
@@ -271,7 +271,7 @@ class GithubClient extends RestClient
     }
     return $result;
   }
-  
+
   /*
    * Function GithubClient::addBugLinkComment
    * @param string title - pr title to parse for bug reference
@@ -283,7 +283,7 @@ class GithubClient extends RestClient
     $orgName = ($organization == '')?'eclipse':$organization; 
     $this->logger->info('pull request comment url: '. $url);
     $this->logger->info("looking for bug reference in: $title");
-    
+
     //match ~ Bug: xxx or [xxx]
     $re = "/[Bb]ug:?\s*#?(\d+)|\[(\d+)\]/";
     $matches = array();
@@ -291,18 +291,18 @@ class GithubClient extends RestClient
       //bug: match will be matches[1], [xxx] match will be matches[2]
       $nBug = count($matches) == 3 ? $matches[2]:$matches[1];
       $link = "https://bugs.$orgName.org/bugs/show_bug.cgi?id=$nBug";
-      
+
       //create payload required for github comment post
       //see https://developer.github.com/v3/issues/comments/#create-a-comment
       $payload = new stdClass();
       $payload->body = "Issue tracker reference:\n". $link;
-   
+
       return $this->post($url, $payload);
     };
-    
+
     return false;
   }
-  
+
   /*
    * Function GithubClient::callHooks
    * @param string event - the event type used to determine which hooks to call
@@ -335,13 +335,13 @@ class GithubClient extends RestClient
       $login
     ));
     $resultObj = $this->get($url);
-  
+
     if ($resultObj) {
       return $resultObj;
     }
     return NULL;
   }
-  
+
   /**
    * Fetch results in a paginated fashion.  See: https://developer.github.com/v3/#pagination
    * @param String $url
@@ -350,22 +350,22 @@ class GithubClient extends RestClient
    * @author droy
    */
   public function get($url) {
-  	$rValue = array();
-  	$page = 1;
-  	$per_page = 100; # TODO: put this in the config!
-  	$morepages = true;
-  
-  	while($morepages) {
-  		# TODO: API docs recommend against creating own pagination URLs, use Links header instead
-  		$thisurl = $url . "?page=$page&per_page=$per_page";
-  		$json = json_decode($this->curl_get($thisurl));
-  		$morepages = count($json) == $per_page;
-  		$rValue = array_merge($rValue, $json);
-  		$page++;
-  	}
-  	return $rValue;
+    $rValue = array();
+    $page = 1;
+    $per_page = 100; # TODO: put this in the config!
+    $morepages = true;
+
+    while($morepages) {
+      # TODO: API docs recommend against creating own pagination URLs, use Links header instead
+      $thisurl = $url . "?page=$page&per_page=$per_page";
+      $json = json_decode($this->curl_get($thisurl));
+      $morepages = count($json) == $per_page;
+      $rValue = array_merge($rValue, $json);
+      $page++;
+    }
+    return $rValue;
   }
-  
+
 }
 
 ?>
