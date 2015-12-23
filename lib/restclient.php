@@ -21,7 +21,7 @@ class RestClient
 {
   private $endpoint;
   protected $logger;
-  
+
   function __construct($endPoint)
   {
     $this->endPoint = $endPoint;
@@ -58,14 +58,14 @@ class RestClient
       sleep($sleepTime);
     }
   }
-  
-  /** 
-   * Send a POST requst using cURL 
-   * @param string $url to request 
-   * @param array $post values to send 
-   * @param array $options for cURL 
+
+  /**
+   * Send a POST requst using cURL
+   * @param string $url to request
+   * @param array $post values to send
+   * @param array $options for cURL
    * @return string 
-   */ 
+   */
   protected function curl_post($url, $post = NULL, array $options = array()) { 
       $defaults = array( 
           CURLOPT_POST => 1, 
@@ -74,34 +74,34 @@ class RestClient
             "Authorization: token ".GITHUB_TOKEN,
             "User-Agent: Eclipse-Github-Bot"
           ),
-          CURLOPT_URL => $url, 
-          CURLOPT_FRESH_CONNECT => 1, 
-          CURLOPT_RETURNTRANSFER => 1, 
-          CURLOPT_FORBID_REUSE => 1, 
-          CURLOPT_TIMEOUT => 4, 
-          CURLOPT_POSTFIELDS => $post 
-      ); 
+          CURLOPT_URL => $url,
+          CURLOPT_FRESH_CONNECT => 1,
+          CURLOPT_RETURNTRANSFER => 1,
+          CURLOPT_FORBID_REUSE => 1,
+          CURLOPT_TIMEOUT => 60,
+          CURLOPT_POSTFIELDS => $post
+      );
 
-      $ch = curl_init(); 
-      curl_setopt_array($ch, ($options + $defaults)); 
+      $ch = curl_init();
+      curl_setopt_array($ch, ($options + $defaults));
       if( ! $result = curl_exec($ch)) 
       {
           $this->logger->error(curl_error($ch));
           trigger_error(curl_error($ch)); 
-      } 
-      curl_close($ch); 
-      return $result; 
-  } 
+      }
+      curl_close($ch);
+      return $result;
+  }
 
   /** 
-   * Send a GET requst using cURL 
-   * @param string $url to request 
-   * @param array $get values to send 
-   * @param array $options for cURL 
-   * @return string 
-   */ 
+   * Send a GET requst using cURL
+   * @param string $url to request
+   * @param array $get values to send
+   * @param array $options for cURL
+   * @return string
+   */
   protected function curl_get($url, array $get = NULL, array $options = array()) {
-      $defaults = array( 
+      $defaults = array(
           CURLOPT_URL => $url,//. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get), 
           //CURLOPT_HEADER => 1,
           CURLOPT_HTTPHEADER => array(
@@ -111,10 +111,10 @@ class RestClient
           ),
           CURLOPT_HEADER => TRUE,
           CURLOPT_RETURNTRANSFER => TRUE, 
-          CURLOPT_TIMEOUT => 4 
+          CURLOPT_TIMEOUT => 60
       ); 
 
-      $ch = curl_init(); 
+      $ch = curl_init();
       curl_setopt_array($ch, ($options + $defaults));
       $result = curl_exec($ch);
       $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -136,15 +136,15 @@ class RestClient
       	$body = "{\"http_code\": $code}";
       }
       curl_close($ch);
-      
+
       return $body;
   }
-  
+
   public function buildURL(array $components = NULL) {
     $path = implode('/', $components);
     return $this->endPoint .'/'. $path;
   } 
-  
+
   /* http convenience functions
    */
   public function get($url) {
@@ -175,7 +175,6 @@ class RestClient
     $json = ($this->curl_post($url, json_encode($data), $extra_headers));
     return json_decode(stripslashes($json));
   }
-  
 }
 
 ?>
