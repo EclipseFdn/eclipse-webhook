@@ -324,6 +324,22 @@ class Github extends Organization {
 		return $this->ldap_client->getGithubLoginFromMail($committerEmail);
 	}
 
+	public function getIssuesByRepoName($repoName) {
+		$rValue = false;
+		if($repoName !== false) {
+			$url = implode('/', array(
+					GITHUB_ENDPOINT_URL,
+					'repos',
+					$repoName,
+					'issues'
+			));
+			
+			global $client;
+			echo "[Info] polling issues for repo: $repoName\n";
+			$rValue = $client->get($url, true);
+		}
+		return $rValue;
+	}
 }
 
 

@@ -93,6 +93,11 @@ $github_hook_add_events = array('pull_request','status');
 $github_hook_remove_events = array('push');
 
 /*
+ * base directory to store github issues and wiki content 
+*/
+$github_issues_basedir = "/tmp";
+
+/*
  * an array of messages used in composing pull_request status comments
  */
 $messages = array(
