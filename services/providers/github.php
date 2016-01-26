@@ -350,22 +350,77 @@ class GithubClient extends RestClient
    * @author droy
    */
   public function get($url) {
+
     $rValue = array();
+
     $page = 1;
     $per_page = 100; # TODO: put this in the config!
     $morepages = true;
 
     while($morepages) {
       # TODO: API docs recommend against creating own pagination URLs, use Links header instead
-      $thisurl = $url . "?page=$page&per_page=$per_page";
-      $json = json_decode($this->curl_get($thisurl));
-      $morepages = count($json) == $per_page;
-      $rValue = array_merge($rValue, $json);
+      if(strpos($url, "?") === false) {
+        $thisurl = $url . "?";
+      }
+      else {
+        $thisurl = $url . "&";
+      }
+      $thisurl .= "page=$page&per_page=$per_page";
+      $json = $this->curl_get($thisurl);
+      $objJSON = json_decode($json);
+      $morepages = count($objJSON) == $per_page;
+      $rValue = array_merge($rValue, $objJSON);
       $page++;
     }
     return $rValue;
   }
 
+  /**
+   * Fetch results in a raw fashion -- json, no pages.  See: https://developer.github.com/v3/#pagination
+   * @param String $url
+   * @param bool Not Paged. If true, do not add page and per_page parameters
+   * @return String JSON string
+   * @since 2016-01-14
+   * @author droy
+   */
+  public function getraw($url, $notpaged=false) {
+
+    $rValue = "";
+
+    $thisurl = $url;
+    if(! $notpaged) {
+      $per_page = 100; # TODO: put this in the config!
+
+      if(strpos($url, "?") === false) {
+        $thisurl = $url . "?";
+      }
+      else {
+        $thisurl = $url . "&";
+      }
+      $thisurl .= "per_page=$per_page";
+    }
+    $json = $this->curl_get($thisurl);
+    return $json;
+  }
+
+  /**
+   * Return the URL to the next page, if any
+   * @return string URL
+   * @author droy
+   * @since 2016-01-14
+   */
+  public function getNextPageLink() {
+    $rValue = "";
+    if(isset($this->response_headers)) {
+      if(strlen($this->response_headers) > 0) {
+        $link_string = $this->getResponseHeaders("Link");
+        if(preg_match("/<(.*)>; rel=\"next\"/", $link_string, $matches)) {
+          $rValue = $matches[1];
+        }
+      }
+    }
+    return $rValue;
+  }
 }
 
 ?>

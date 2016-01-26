@@ -1,6 +1,6 @@
 <?php
 /*******************************************************************************
-* Copyright (c) 2013-2015 Eclipse Foundation and others.
+* Copyright (c) 2013-2016 Eclipse Foundation and others.
 * All rights reserved. This program and the accompanying materials
 * are made available under the terms of the Eclipse Public License v1.0
 * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
 *
 * Contributors:
 *    Zak James (zak.james@gmail.com) - Initial implementation
+*    Denis Roy (Eclipse Foundation) - misc enhancements
 *******************************************************************************/
 
 
@@ -21,6 +22,7 @@ class RestClient
 {
   private $endpoint;
   protected $logger;
+  protected $response_headers = "";
 
   function __construct($endPoint)
   {
@@ -132,8 +134,10 @@ class RestClient
       $body = substr($result, $headerLength);
       //handle throttling
       $this->throttle($header);
+      $this->response_headers = $header;
+
       if(strlen($body) <= 0) {
-      	$body = "{\"http_code\": $code}";
+        $body = "{\"http_code\": $code}";
       }
       curl_close($ch);
 
@@ -175,6 +179,24 @@ class RestClient
     $json = ($this->curl_post($url, json_encode($data), $extra_headers));
     return json_decode(stripslashes($json));
   }
+
+  /**
+   * Get all response headers from the last GET, or one specific header value
+   * @param string optional header to look for
+   * @return string The entire set, or just the desired value
+   * @author droy
+   * @since 2016-01-14
+   */
+  public function getResponseHeaders($header=NULL) {
+    $rValue = $this->response_headers;
+    if(!is_null($header)) {
+      if(preg_match("/$header: (.*)/", $this->response_headers, $matches)) {
+        $rValue = preg_replace('/\r/', "", $matches[1]);
+      }
+    }
+    return $rValue;
+  }
+
 }
 
 ?>
