@@ -55,7 +55,8 @@ class LDAPClient {
               # $et contains GITHIB:id  or BITBUCKET:id
               $id = explode(":", $et);
               if($id[0] == "GITHUB") {
-                return $id[1];
+		#clean up whitespace
+                return trim($id[1]);
                 last;
               }
             }
