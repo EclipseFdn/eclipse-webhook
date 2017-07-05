@@ -78,8 +78,13 @@ class LDAPClient {
       $sr = ldap_search($ds, $this->dn, "(employeeType=GITHUB:$gh)", array("mail"));
       $info = ldap_get_entries($ds, $sr);
       if($info["count"] > 0) {
-        if(isset($info[0]["mail"])) {
-          return $info[0]["mail"][0];
+	#loop through 'all' results and only return the email associated with committers
+        for ( $i = 0; $i <= $info["count"]; $i++ ){
+          if ( strpos($info[0]["dn"],"ou=people") !== FALSE ){
+            if(isset($info[$i]["mail"])) {
+              return $info[$i]["mail"][0];
+            }
+          }
         }
       }
     }
