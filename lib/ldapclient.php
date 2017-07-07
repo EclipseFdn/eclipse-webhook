@@ -80,7 +80,7 @@ class LDAPClient {
       if($info["count"] > 0) {
 	#loop through 'all' results and only return the email associated with committers
         for ( $i = 0; $i <= $info["count"]; $i++ ){
-          if ( strpos($info[0]["dn"],"ou=people") !== FALSE ){
+          if ( strpos($info[$i]["dn"],"ou=people") !== FALSE ){
             if(isset($info[$i]["mail"])) {
               return $info[$i]["mail"][0];
             }
