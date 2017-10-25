@@ -1,4 +1,4 @@
-External git repository validation web hook
+External Git repository validation web hook
 ==============
 Provides a web service which can be registered with hosted repositories
 to perform post-processing triggered by various repo events.
