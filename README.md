@@ -24,4 +24,4 @@ Quick Start
 
 How it works
 ------------
-A web hook is registered with the external git host pointing back to this service. On each pull request creation or update event, the web service is notified and, using the api, walks the list of committers, checking their credentials. If validation fails, the pull request is modified to show that there is a problem and provide links and details concerning how the issues can be addressed.
+A web hook is registered with the external Git host pointing back to this service. On each pull request creation or update event, the web service is notified and, using the api, walks the list of committers, checking their credentials. If validation fails, the pull request is modified to show that there is a problem and provide links and details concerning how the issues can be addressed.
