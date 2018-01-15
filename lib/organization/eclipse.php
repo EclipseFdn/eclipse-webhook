@@ -43,13 +43,28 @@ class Eclipse extends Organization {
 		
 		if (is_object($this->objPMIjson)) {
 			foreach(get_object_vars($this->objPMIjson) as $teamName => $repoUserObj) {
+				if($this->debug) echo "In Eclipse obj. teamname is: $teamName \n";
 				$team = new Team($teamName);
 				if(is_object($repoUserObj)) {
 					foreach($repoUserObj->repos as $repo) {
-						$team->addRepo($repo);
+						if($this->debug) echo "In Eclipse obj. repo is: $repo \n";
+						#Work out which GitHub org this repo belongs to by stripping the host part of the URL, and then splitting based on /
+						$teamRepoOrg = explode("/",str_replace("https://github.com/","",$repo));
+						$teamOrg = $team->getOrgName();
+						#if there isn't currently an org for the current org and we have an org from the URL set the value.
+						if ( $teamOrg === '' && $teamRepoOrg[0] !== '' ) {
+							if($this->debug) echo "Setting org name to: $teamOrg($teamRepoOrg[0]) \n";
+							$team->setOrgName($teamRepoOrg[0]);
+						} else if ( strcmp($teamRepoOrg[0],$teamOrg) !== 0 ) {
+							#this repo is in another org, which should be a no-no within a single project.
+							echo "[Error] $teamName has a repo in another org (got: $teamRepoOrg expected: $teamOrg.\n";
+							continue;
+						}
+  						$team->addRepo($repo);
 					}
 					foreach($repoUserObj->users as $user) {
 						$team->addCommitter($user);
+						echo "Adding $user to $teamName \n";
 					}
 				}
 				else {

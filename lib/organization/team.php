@@ -18,6 +18,7 @@ class Team {
 	
 	function __construct($teamName) {
 		$this->teamName = $teamName;
+		$this->orgName = "";
 		$this->teamID = 0;
 		$this->repoList = array();
 		$this->committerList = array();
@@ -33,6 +34,16 @@ class Team {
 	
 	public function setTeamID($id) {
 		$this->teamID = $id;
+	}
+	public function setOrgName($orgName) {
+		$this->orgName = $orgName;
+		//now lets update the team name
+		$orgNameRoot = preg_replace('/-.*$/',"",$orgName);
+        	#team names are rooted by the organization root (so eclipse-ee4j/jsonp should have a group name of eclipse-jsonp not eclipse-ee4j-jsonp)
+	        $this->teamName = preg_replace('/^.*-/',$orgNameRoot."-",$this->teamName);
+        }
+	public function getOrgName() {
+		return $this->orgName;
 	}
 	public function getTeamName() {
 		return $this->teamName;

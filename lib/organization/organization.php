@@ -26,7 +26,7 @@ class OrganizationFactory {
 		$class = ucfirst($organization);
 		$classfile = '../lib/organization/' . $organization . '.php';
 		if(file_exists($classfile)) {
-			include ($classfile);
+			include_once ($classfile);
 		}
 		if(class_exists($organization)) {
 			return new $class($debug);

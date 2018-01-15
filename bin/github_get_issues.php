@@ -57,87 +57,100 @@ if (!defined('GITHUB_TOKEN')) {
 global $github_organization, $github_issues_basedir;
 $org_github = OrganizationFactory::build("github", DEBUG_MODE); # debug on or off
 
-foreach($org_github->getTeamList() as $org_forge_team) {
-  echo "Looping through team [" . $org_forge_team->getTeamName() . "]\n";
+foreach( $org_github->getOrgs() as $org ) {
+  echo "Working with $org \n";
 
-  $team_basedir = $github_issues_basedir . "/" . $org_forge_team->getTeamName();
-  if (!is_dir($team_basedir)){
-    if (!mkdir($team_basedir, 0700)) {
-      die("Failed to create Team dir $team_basedir...");
-    }
+  #try and limit this to 'eclipse' based projects, remove this to start working with locationtech etc.
+  if ( preg_match('/eclipse/',$org) !== 1 ){
+    echo "Not eclipse, skipping issues processing\n";
+    continue;
   }
 
-  foreach($org_forge_team->getRepoList() as $repoUrl) {
-    $repoName = $org_github->getRepoName($repoUrl);
-    echo "--> Found repo [" . $repoName . "]\n";
-    if($repoName == "") {
-      echo "    Missing Github repo: [$repoUrl]\n";
+  $github_organization = $org;
+
+  foreach($org_github->getTeamList() as $org_forge_team) {
+    echo "Looping through team [" . $org_forge_team->getTeamName() . "]\n";
+  
+    $team_basedir = $github_issues_basedir . $github_organization . "/" . $org_forge_team->getTeamName();
+    if (!is_dir($team_basedir)){
+      #turn on recursive creation
+      if (!mkdir($team_basedir, 0700,true)) {
+        die("Failed to create Team dir $team_basedir...");
+      }
     }
-    else {
-      $repoFriendlyName = str_replace("/", ".", $repoName);
-      echo "--> Repo friendly name: " . $repoFriendlyName . "\n";
-
-      $repo_basedir = $team_basedir . "/" . $repoFriendlyName;
-      if (!is_dir($repo_basedir)){
-        if (!mkdir($repo_basedir, 0700)) {
-          die("Failed to create Repo dir $repo_basedir...");
-        }
+  
+    foreach($org_forge_team->getRepoList() as $repoUrl) {
+      $repoName = $org_github->getRepoName($repoUrl);
+      echo "--> Found repo [" . $repoName . "]\n";
+      if($repoName == "") {
+        echo "    Missing Github repo: [$repoUrl]\n";
       }
-
-
-      # Start the backup process for this repo
-      $date = "";
-      $page = 1;
-
-      # fetch a timestamp in the repo dir to pull in new issues since last run
-      if(file_exists($repo_basedir . "/timestamp.txt")) {
-        $fp = fopen($repo_basedir . "/timestamp.txt", "r");
-        $data = fread($fp, 64);
+      else {
+        $repoFriendlyName = str_replace("/", ".", $repoName);
+        echo "--> Repo friendly name: " . $repoFriendlyName . "\n";
+  
+        $repo_basedir = $team_basedir . "/" . $repoFriendlyName;
+        if (!is_dir($repo_basedir)){
+          if (!mkdir($repo_basedir, 0700)) {
+            die("Failed to create Repo dir $repo_basedir...");
+          }
+        }
+  
+  
+        # Start the backup process for this repo
+        $date = "";
+        $page = 1;
+  
+        # fetch a timestamp in the repo dir to pull in new issues since last run
+        if(file_exists($repo_basedir . "/timestamp.txt")) {
+          $fp = fopen($repo_basedir . "/timestamp.txt", "r");
+          $data = fread($fp, 64);
+          fclose($fp);
+  
+          $stuff = explode("\n", $data);
+          $date = $stuff[0];
+          $stuff = explode(" ", $stuff[1]);
+          $page = $stuff[1];
+        }
+  
+        if($date != "") {
+          $date = "&since=" . $date;
+        }
+  
+  
+        $url = implode('/', array(
+               GITHUB_ENDPOINT_URL,
+               'repos',
+               $repoName,
+              'issues?direction=asc&state=all' . $date ));
+  
+         $morepages = true;
+         while($morepages) {
+           echo "-->" .  $url . "\n";
+           $json =  $client->getraw($url);
+           if(strlen($json) > 10) {
+             # echo "Remaining hits: " . $client->getResponseHeaders("X-RateLimit-Remaining") . "\n";
+             $gz = gzopen($repo_basedir . "/issues.$page.json.gz", "w9");
+             gzwrite($gz, $json);
+             gzclose($gz);
+  
+             $url = $client->getNextPageLink();
+             $page++;
+             if ($url == "") {
+               $morepages = false;
+             }
+          }
+          else {
+            $morepages = false;
+          }
+        }
+  
+        # Write status info
+        $fp = fopen($repo_basedir . "/timestamp.txt", "w");
+        fwrite($fp, date("c") . "\n");
+        fwrite($fp, "page " . $page);
         fclose($fp);
-
-        $stuff = explode("\n", $data);
-        $date = $stuff[0];
-        $stuff = explode(" ", $stuff[1]);
-        $page = $stuff[1];
       }
-
-      if($date != "") {
-        $date = "&since=" . $date;
-      }
-
-
-      $url = implode('/', array(
-             GITHUB_ENDPOINT_URL,
-             'repos',
-             $repoName,
-            'issues?direction=asc&state=all' . $date ));
-
-       $morepages = true;
-       while($morepages) {
-         echo "-->" .  $url . "\n";
-         $json =  $client->getraw($url);
-         if(strlen($json) > 10) {
-           # echo "Remaining hits: " . $client->getResponseHeaders("X-RateLimit-Remaining") . "\n";
-           $gz = gzopen($repo_basedir . "/issues.$page.json.gz", "w9");
-           gzwrite($gz, $json);
-           gzclose($gz);
-
-           $url = $client->getNextPageLink();
-           $page++;
-           if ($url == "") {
-             $morepages = false;
-           }
-        }
-        else {
-          $morepages = false;
-        }
-      }
-
-      # Write status info
-      $fp = fopen($repo_basedir . "/timestamp.txt", "w");
-      fwrite($fp, date("c") . "\n");
-      fwrite($fp, "page " . $page);
-      fclose($fp);
     }
   }
 }

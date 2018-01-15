@@ -17,6 +17,7 @@ include_once('../services/providers/github.php');
 class Github extends Organization {
 
 	private $GHTeamsjson;  ## See below for visual example
+	private $GHOrgs = array();
 	private $teamList;
 	private $users = array(
 		'validCommitter' => array(),
@@ -41,76 +42,97 @@ class Github extends Organization {
 		$client = new GithubClient(GITHUB_ENDPOINT_URL);
 		$this->logger = new Logger();
 
-		$this->teamList = array();
-
+		#test the user/orgs api endpoint
 		$url = implode('/', array(
 				GITHUB_ENDPOINT_URL,
-				'orgs',
-				$github_organization,
-				'teams'
+				'user',
+				'orgs'
 		));
-		if($this->debug) echo "GH Org: calling org teams api $url \n"; 
-		$this->GHTeamsjson = $client->get($url);
-
-		if (defined('LDAP_HOST')) {
-			include_once('../lib/ldapclient.php');
-			$this->ldap_client = new LDAPClient(LDAP_HOST, LDAP_DN);
-		}
-
-		foreach($this->GHTeamsjson as $GHteam) {
-			# No sense in loading up the owners team
-			if($GHteam->slug == "owners") {
+		if($this->debug) echo "GH Org: calling orgs api $url \n";
+		$this->GHOrgsjson = $client->get($url);
+		foreach($this->GHOrgsjson as $GHOrg){
+			$github_organization = $GHOrg->login;
+			array_push($this->GHOrgs,$github_organization);  
+			if($this->debug) echo "In Github org loop, adding: $github_organization\n";
+	
+			#limit the github org to eclipse. remove these to work with locationtech etc.
+			if ( preg_match("/eclipse/",$github_organization) !== 1) {
+				f($this->debug) echo "Not an Eclipse org, bypassing \n";
 				continue;
 			}
-			$team = new Team($GHteam->slug);
-			$team->setTeamID($GHteam->id);
-			if($this->debug) echo "    Found Github team [" . $GHteam->slug . "] \n";
+			$this->debug = true;
 
-			# get list of repos and users
-			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members';
-			if($this->debug) echo "    GH Org: calling members api: $url \n";
-			$GHTeamMembersjson = $client->get($url);
-			foreach($GHTeamMembersjson as $GHTeamMember) {
-				# Convert GitHub's login to an email address
-				# GitHub users don't necessarily expose their email addresses
-				# But Eclipse LDAP has that mapping
-				if($this->debug) echo "        Found team member [" . $GHTeamMember->login . "]... looking up email... [";
-				if(defined('LDAP_HOST')) {
-					$email = $this->ldap_client->getMailFromGithubLogin($GHTeamMember->login);
-					if($email != "") {
-						if($this->debug) echo $email;
-						$team->addCommitter($email);
+			$this->teamList["$github_organization"] = array();
+
+			$url = implode('/', array(
+					GITHUB_ENDPOINT_URL,
+					'orgs',
+					$github_organization,
+					'teams'
+			));
+			if($this->debug) echo "GH Org: calling org teams api $url \n"; 
+			$this->GHTeamsjson = $client->get($url);
+
+			if (defined('LDAP_HOST')) {
+				include_once('../lib/ldapclient.php');
+				$this->ldap_client = new LDAPClient(LDAP_HOST, LDAP_DN);
+			}	
+
+			foreach($this->GHTeamsjson as $GHteam) {
+				# No sense in loading up the owners team
+				if($GHteam->slug == "owners") {
+					continue;
+				}
+				$team = new Team($GHteam->slug);
+				$team->setTeamID($GHteam->id);
+				if($this->debug) echo "    Found Github team [" . $GHteam->slug . "] \n";
+
+				# get list of repos and users
+				# TODO: deal with pages...  in $client->get?
+				$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/members';
+				if($this->debug) echo "    GH Org: calling members api: $url \n";
+				$GHTeamMembersjson = $client->get($url);
+				foreach($GHTeamMembersjson as $GHTeamMember) {
+					# Convert GitHub's login to an email address
+					# GitHub users don't necessarily expose their email addresses
+					# But Eclipse LDAP has that mapping
+					if($this->debug) echo "        Found team member [" . $GHTeamMember->login . "]... looking up email... [";
+					if(defined('LDAP_HOST')) {
+						$email = $this->ldap_client->getMailFromGithubLogin($GHTeamMember->login);
+						if($email != "") {
+							if($this->debug) echo $email;
+							$team->addCommitter($email);
+						}
+						else {
+							$team->addCommitter($GHTeamMember->login);
+							if($this->debug) echo "NO EMAIL FOUND";
+						}
+						if($this->debug) echo "]\n";
 					}
 					else {
 						$team->addCommitter($GHTeamMember->login);
-						if($this->debug) echo "NO EMAIL FOUND";
 					}
-					if($this->debug) echo "]\n";
 				}
-				else {
-					$team->addCommitter($GHTeamMember->login);
-				}
-			}
 			
-			# TODO: deal with pages...  in $client->get?
-			$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos';
-			if($this->debug) echo "    GH Org: calling team repos api $url \n";
-			$GHTeamReposjson = $client->get($url);
-			foreach($GHTeamReposjson as $GHTeamRepo) {
-				if($this->debug) echo "        Found team repo [" . $GHTeamRepo->html_url . "]\n";
-				$team->addRepo($GHTeamRepo->html_url);
-			}
+				# TODO: deal with pages...  in $client->get?
+				$url = GITHUB_ENDPOINT_URL . '/teams/' . $GHteam->id . '/repos';
+				if($this->debug) echo "    GH Org: calling team repos api $url \n";
+				$GHTeamReposjson = $client->get($url);
+				foreach($GHTeamReposjson as $GHTeamRepo) {
+					if($this->debug) echo "        Found team repo [" . $GHTeamRepo->html_url . "]\n";
+					$team->addRepo($GHTeamRepo->html_url);
+				}
 
 
-			array_push($this->teamList, $team);
-			if($this->debug) echo "====== END OF TEAM\n\n";
+				//array_push($this->teamList, $team);
+				array_push($this->teamList["$github_organization"], $team);
+				if($this->debug) echo "====== END OF TEAM\n\n";
 			
+			}
+
+			if($this->debug) $this->debug();
 		}
-
-		if($this->debug) $this->debug();
 	}
-
 
 
 
@@ -121,9 +143,14 @@ class Github extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	public function getTeamByName($teamName) {
+	public function getTeamByName($teamName,$organization = "") {
 		$rValue = false;
-		foreach ($this->teamList as $team) {
+                # Fetch list of Organization teams, the repos and users in each
+                global $github_organization;
+		if ( $organization == '') {
+			$organization = $github_organization;
+		}	
+		foreach ($this->teamList["$organization"] as $team) {
 			if($team->getTeamName() == $teamName) {
 				$rValue = $team;
 				break;
@@ -140,9 +167,14 @@ class Github extends Organization {
 	 * @author droy
 	 * @since 2015-05-06
 	 */
-	public function getTeamByRepoName($repoName) {
+	public function getTeamByRepoName($repoName,$organization="") {
 		$rValue = false;
-		foreach ($this->teamList as $team) {
+                # Fetch list of Organization teams, the repos and users in each
+                global $github_organization;
+		if ( $organization == '') {
+			$organization = $github_organization;
+		}
+		foreach ($this->teamList["$organization"] as $team) {
 			# We are looking for $repoName (eclipse/birt) within the list of repo URLs (https://github.com/eclipse/birt).
 			foreach($team->getRepoList() as $repo) {
 				if($this->strEndsWith($repo, $repoName)) {
@@ -161,10 +193,15 @@ class Github extends Organization {
 	 * @author droy
 	 * @since 2015-05-13
 	 */
-	public function getTeamByRepoUrl($repoUrl) {
+	public function getTeamByRepoUrl($repoUrl,$organization="") {
 		$rValue = false;
+                # Fetch list of Organization teams, the repos and users in each
+                global $github_organization;
+                if ( $organization == '') {
+                        $organization = $github_organization;
+                }
 		if($repoUrl != "") {
-			foreach ($this->teamList as $team) {
+			foreach ($this->teamList["$organization"] as $team) {
 				# We are looking for $repoName (eclipse/birt) within the list of repo URLs (https://github.com/eclipse/birt).
 				foreach($team->getRepoList() as $repo) {
 					if($repo == $repoUrl) {
@@ -279,18 +316,38 @@ class Github extends Organization {
 	 * Return list of teams (array of Team objects)
 	 * @return multitype:
 	 */
-	public function getTeamList() {
-		return $this->teamList;
+	public function getTeamList($organization="") {
+                # Fetch list of Organization teams, the repos and users in each
+                global $github_organization;
+                if ( $organization == '') {
+                        $organization = $github_organization;
+                }
+
+		return $this->teamList["$organization"];
 	}
 
-	public function addTeam($team) {
-		$rValue = FALSE;
+        /**
+         * Return list of orgs (array )
+         * @return multitype:
+         */
+        public function getOrgs() {
+                return $this->GHOrgs;
+        }
 
-		global $github_organization;
+
+
+	public function addTeam($team,$organization="") {
+		$rValue = FALSE;
+                # Fetch list of Organization teams, the repos and users in each
+                global $github_organization;
+                if ( $organization == '') {
+                        $organization = $github_organization;
+                }
+
 		$url = implode('/', array(
 				GITHUB_ENDPOINT_URL,
 				'orgs',
-				$github_organization,
+				$organization,
 				'teams'
 		));
 		
@@ -307,7 +364,8 @@ class Github extends Organization {
 		$team->setTeamID($resultObj->id);
 		
 		if(is_a($team, "Team")) {
-			array_push($this->teamList, $team);
+			//array_push($this->teamList, $team);
+			array_push($this->teamList["$organization"], $team);
 			$rValue = TRUE;
 		}
 		
