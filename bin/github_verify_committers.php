@@ -39,6 +39,8 @@ $client = new RestClient(GITHUB_ENDPOINT_URL);
 $logger = new Logger();
 
 $store = null;
+$githubOrgs = array();
+
 if (defined('MYSQL_DBNAME')) {
 	$store = new MySQLStore();
 } else {
@@ -73,17 +75,26 @@ if ($github_organization == '') {
 
 # create an organization for org-specific rules and functions
 $org_forge = OrganizationFactory::build($github_organization, DEBUG_MODE);
-$org_github = OrganizationFactory::build("github", DEBUG_MODE); # debug on or off
+$org_github = OrganizationFactory::build("github", DEBUG_MODE);
 
 foreach($org_forge->getTeamList() as $org_forge_team) {
 	echo "Looping through team [" . $org_forge_team->getTeamName() . "]\n";
+	
+	#load github org from team
+	$github_organization = $org_forge_team->getOrgName();
+	echo "GitHub Org: " . $github_organization . "\n";
+	#only work with Eclipse orgs, remove this to start handling locationtech etc.
+        if ( preg_match('/eclipse/',$github_organization) !== 1 ){
+	  echo "Not an Eclipse org, skipping \n";
+	  continue;
+        }
+	
 
 	$org_github_team = $org_github->getTeamByName($org_forge_team->getTeamName());
 	if($org_github_team === FALSE) {
 		echo "Missing Github team: [" . $org_forge_team->getTeamName() . "]\n";
-
 		# copy team, but clear GitHub committer list since it doesn't exist
-		$org_github_team = $org_forge_team;
+		$org_github_team = clone $org_forge_team;
 		$org_github_team->clearCommitterList();
 		if(!$dry_run) {
 			$org_github->addTeam($org_github_team);
@@ -95,8 +106,8 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 		echo "    Looping through repo [" . $repoName . "]\n";
 		if(!$org_github->teamHasRepoUrl($org_github_team, $repoUrl)) {
 			echo "    Missing Github repo: [$repoUrl]\n";
-
 			$url = implode('/', array(GITHUB_ENDPOINT_URL, 'teams',	$org_github_team->getTeamID(), 'repos', $repoName));
+			echo "Create repo URL: $url \n";
 			if(!$dry_run) {
 				$repoCreated = $client->put($url);
 				print_r($repoCreated);
@@ -109,12 +120,10 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 	$githubResult = $org_github_team->getCommitterList();
 	$eclipseResult = $org_forge_team->getCommitterList();
 
-
-	/* echo "Github members: \n";
-	print_r($githubResult);
-	echo "Eclipse members: \n";
-	print_r($eclipseResult);  
-	*/
+	//echo "Github members: \n";
+	//print_r($githubResult);
+	//echo "Eclipse members: \n";
+	//print_r($eclipseResult);  
 
 	echo "\n[Info] checking $repoName...\n";
 	$toBeRemoved = compare($githubResult, $eclipseResult);
@@ -124,7 +133,7 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 	if (count($toBeRemoved)) {
 		echo "\n[Info] ";
 		echo (isset($messages['missing_team_members']) ? $messages['missing_team_members'] :
-		'Github repo team members missing from ' . $github_organization . ' project (to be removed): ');  
+		'Github repo team members missing from ' . $org_forge_team->getTeamName() . ' project (to be removed): ');  
 		echo "\n";
 	}
 	foreach ($toBeRemoved as $email) {
@@ -145,7 +154,7 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 	if (count($toBeAdded)) {
 		echo "\n[Info] ";
 		echo (isset($messages['missing_members']) ? $messages['missing_members'] :
-		$github_organization . ' project members missing from Github repo team (to be added): ');
+		$org_forge_team->getTeamName() . ' project members missing from Github repo team (to be added): ');
 		echo "\n";
 
 		foreach ($toBeAdded as $email) {
@@ -154,7 +163,7 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 				echo ("[Info] inviting $email ($gh_login) to team: " . $org_github_team->getTeamName() . " [" . $org_github_team->getTeamID() . "]: ");
 				if (!$dry_run) {
 					$addResult = addGithubTeamMember($gh_login, $org_github_team->getTeamID());
-					echo isset($addResult->http_code) ? $addResult->http_code : (isset($addResult->state) ? $addResult->state : $addResult->message);
+					echo isset($addResult->http_code) ? $addResult->http_code : (isset($addResult->state) ? $addResult->state : $addResult->message);	
 					# TODO: warn user that they have a pending invitation?
 					# Lots of people seem to miss the GitHub invitation
 					# https://developer.github.com/v3/orgs/teams/#get-team-membership
@@ -162,7 +171,7 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 				echo "\n";
 			}
 			else {
-				echo ("[Info] cannot add $email to team: " . $org_github_team->getTeamName() . " - no Github Login attached to $github_organization account!\n");
+				echo ("[Info] cannot add $email to team: " . $org_github_team->getTeamName() . " - no Github Login attached to eclipse account!\n");
 			}
 		}
 	}
@@ -195,6 +204,7 @@ function addGithubTeamMember($login, $teamId) {
 		'memberships',
 		$login
 	));
+
 	return $client->put($url);
 }
 
