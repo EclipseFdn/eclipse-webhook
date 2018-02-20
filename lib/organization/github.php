@@ -57,7 +57,7 @@ class Github extends Organization {
 	
 			#limit the github org to eclipse. remove these to work with locationtech etc.
 			if ( preg_match("/eclipse/",$github_organization) !== 1) {
-				f($this->debug) echo "Not an Eclipse org, bypassing \n";
+				if($this->debug) echo "Not an Eclipse org, bypassing \n";
 				continue;
 			}
 			$this->debug = true;
