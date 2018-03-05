@@ -46,7 +46,7 @@ if (!$request) {
   exit('Github service called without correct payload');
 }
 
-$provider = new GithubClient('https://api.github.com/');
+$provider = new GithubClient(GITHUB_ENDPOINT_URL);
 $service = new CLAService($provider);
 
 $service->process($request);

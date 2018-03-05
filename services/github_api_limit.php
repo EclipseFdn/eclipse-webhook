@@ -25,7 +25,7 @@ if (!defined('GITHUB_TOKEN')) {
 }
 include_once('./providers/github.php');
 
-$client = new GitHubClient("https://api.github.com");
+$client = new GitHubClient(GITHUB_ENDPOINT_URL);
 $result = json_decode($client->getraw($client->buildURL(array("rate_limit")), true));
 date_default_timezone_set('UTC');
 
