@@ -55,9 +55,9 @@ class Github extends Organization {
 			array_push($this->GHOrgs,$github_organization);  
 			if($this->debug) echo "In Github org loop, adding: $github_organization\n";
 	
-			#limit the github org to eclipse. remove these to work with locationtech etc.
-			if ( preg_match("/eclipse/",$github_organization) !== 1) {
-				if($this->debug) echo "Not an Eclipse org, bypassing \n";
+			#limit the selected orgs to those from the config file.
+			if ( preg_match(GITHUB_ORG_REGEX,$github_organization) !== 1) {
+				if($this->debug) echo "Not a selected org, bypassing \n";
 				continue;
 			}
 			$this->debug = true;

@@ -60,9 +60,9 @@ $org_github = OrganizationFactory::build("github", DEBUG_MODE); # debug on or of
 foreach( $org_github->getOrgs() as $org ) {
   echo "Working with $org \n";
 
-  #try and limit this to 'eclipse' based projects, remove this to start working with locationtech etc.
-  if ( preg_match('/eclipse/',$org) !== 1 ){
-    echo "Not eclipse, skipping issues processing\n";
+  #only work with selected orgs based on the config file
+  if ( preg_match(GITHUB_ORG_REGEX,$github_organization) !== 1 ){
+    echo "Not a selected org, skipping \n";
     continue;
   }
 
