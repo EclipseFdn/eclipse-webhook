@@ -372,6 +372,36 @@ class Github extends Organization {
 		return $rValue;
 	}
 
+        ############
+        # Name: setTeamPerms
+        # function: given a team id(number), and a repo(text) sets the team permissions to 'write' per (https://developer.github.com/v3/teams/#add-or-update-team-repository)                      
+        # the repo parameter is expected to be in the format 'orgname/reponame'
+        # I/O: takes team,repo returns 1 on success -1 on failure
+        ############
+        public function setTeamPerms($team="",$repo=""){
+
+                if ( $team === "" AND $repo === "" ) {
+                        #called with no params, fail
+                        return -1;
+                } else {
+                        $url = implode('/', array(
+                                GITHUB_ENDPOINT_URL,
+                                'teams',
+                                $team,
+                                'repos',
+                                $repo
+                        ));
+                        # create team on GitHub, then snag the ID
+                        global $client;
+                        if($this->debug) echo "[Info] Setting team(" . $team. ") permission to write on $repo at $url\n";
+                        $resultObj = $client->put($url, array("permission" => "write"));
+                        print_r($resultObj);
+			return 1;
+                }
+        }
+
+
+
 	/**
 	 * Get Github Username From EMail
 	 * @param string $committerEmail

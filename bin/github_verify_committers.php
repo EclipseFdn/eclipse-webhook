@@ -111,6 +111,12 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 			if(!$dry_run) {
 				$repoCreated = $client->put($url);
 				print_r($repoCreated);
+				# try to update the group permissions as there is a bug that causes the permissions to change to read from write if you try to re-create a repo
+                                echo "Setting team perms\n";
+                                if ( $org_github->setTeamPerms($org_github_team->getTeamID(),$repoName) == -1 ){
+					echo "Failed to set team permissions on $repoName";
+				}
+
 			}
 			# TODO: handle repo creation error
 		}
