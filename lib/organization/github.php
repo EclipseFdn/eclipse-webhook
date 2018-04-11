@@ -372,12 +372,15 @@ class Github extends Organization {
 		return $rValue;
 	}
 
-        ############
-        # Name: setTeamPerms
-        # function: given a team id(number), and a repo(text) sets the team permissions to 'write' per (https://developer.github.com/v3/teams/#add-or-update-team-repository)                      
-        # the repo parameter is expected to be in the format 'orgname/reponame'
-        # I/O: takes team,repo returns 1 on success -1 on failure
-        ############
+	/**
+         *  given a team id, and a repo sets the team permissions to 'write' per (https://developer.github.com/v3/teams/#add-or-update-team-repository)                    
+	 * 
+         * @param int $team
+	 * @param string $repo
+	 * @return int
+	 * @author mward
+	 * @since 2018-04-08
+	 */
         public function setTeamPerms($team="",$repo=""){
 
                 if ( $team === "" AND $repo === "" ) {
