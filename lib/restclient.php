@@ -144,6 +144,48 @@ class RestClient
       return $body;
   }
 
+ /** 
+   * Send a put requst using cURL
+   * @param string $url to request
+   * @param array $get values to send
+   * @param array $options for cURL
+   * @return string
+   */
+  protected function curl_put($url, $data = NULL, array $options = array()) {
+      //mangle URLS to use bump proxy.
+      $url = preg_replace("/api\.github\.com/","proxy.eclipse.org:9998",$url);
+      $defaults = array(
+          CURLOPT_URL => $url,//. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get), 
+          //CURLOPT_HEADER => 1,
+          CURLOPT_HTTPHEADER => array(
+            "Authorization: token ".GITHUB_TOKEN,
+            "User-Agent: Eclipse-Github-Bot",
+          ),
+          CURLOPT_HEADER => TRUE,
+          CURLOPT_RETURNTRANSFER => TRUE,
+          CURLOPT_CUSTOMREQUEST => "PUT",
+          CURLOPT_POSTFIELDS => '',
+      );
+      if ( $data !== NULL ) {
+          $data_json = json_encode($data);
+          $defaults[CURLOPT_POSTFIELDS] = $data_json;
+          array_push($defaults[CURLOPT_HTTPHEADER],"Content-Type: application/json");
+          array_push($defaults[CURLOPT_HTTPHEADER],"Content-Length: " . strlen($data_json));
+      } else {
+          array_push($defaults[CURLOPT_HTTPHEADER],"Content-Length: 0");
+      }
+      $ch = curl_init();
+      curl_setopt_array($ch, ($options + $defaults));
+      if( ! $result = curl_exec($ch))
+      {
+          $this->logger->error(curl_error($ch));
+          trigger_error(curl_error($ch));
+          trigger_error("Post url" . $url);
+      }
+      curl_close($ch);
+      return $result;
+  }
+
   public function buildURL(array $components = NULL) {
     $path = implode('/', $components);
     return $this->endPoint .'/'. $path;
@@ -156,12 +198,16 @@ class RestClient
     return json_decode(urldecode($json));
   }
 
-  public function put($url) {
+  public function put($url, $data=NULL) {
     $extra_headers = array(
       CURLOPT_CUSTOMREQUEST => 'PUT',
       CURLOPT_POSTFIELDS => ""
     );
-    $json = ($this->curl_get($url, NULL, $extra_headers));
+    if ( $data !== NULL ) {
+      $json = ($this->curl_put($url,$data));
+    } else {
+      $json = ($this->curl_get($url, NULL, $extra_headers));
+    }
     return json_decode(stripslashes($json));
   }
 
