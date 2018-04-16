@@ -64,7 +64,7 @@ class Eclipse extends Organization {
 					}
 					foreach($repoUserObj->users as $user) {
 						$team->addCommitter($user);
-						echo "Adding $user to $teamName \n";
+						if($this->debug) echo "Adding $user to $teamName \n";
 					}
 				}
 				else {
