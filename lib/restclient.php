@@ -69,6 +69,8 @@ class RestClient
    * @return string 
    */
   protected function curl_post($url, $post = NULL, array $options = array()) { 
+      //mangle URLS to use bump proxy.
+      $url = preg_replace("/api\.github\.com/","proxy.eclipse.org:9998",$url);
       $defaults = array( 
           CURLOPT_POST => 1, 
           CURLOPT_HEADER => 0, 
@@ -103,6 +105,8 @@ class RestClient
    * @return string
    */
   protected function curl_get($url, array $get = NULL, array $options = array()) {
+      //mangle URLS to use bump proxy.
+      $url = preg_replace("/api\.github\.com/","proxy.eclipse.org:9998",$url);
       $defaults = array(
           CURLOPT_URL => $url,//. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get), 
           //CURLOPT_HEADER => 1,
