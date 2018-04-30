@@ -79,7 +79,8 @@ class LDAPClient {
       $info = ldap_get_entries($ds, $sr);
       if($info["count"] > 0) {
 	#loop through 'all' results and only return the email associated with committers
-        for ( $i = 0; $i <= $info["count"]; $i++ ){
+	#MWARD remove the = which causes something like an off-by-1 error since the list starts at 0, but the count is 1
+        for ( $i = 0; $i < $info["count"]; $i++ ){
           if ( strpos($info[$i]["dn"],"ou=people") !== FALSE ){
             if(isset($info[$i]["mail"])) {
               return $info[$i]["mail"][0];
