@@ -20,7 +20,7 @@ Quick Start
 1. Test the service by forking an organization repo, making a change and creating a pull request against the original.
  * Results of verification will show up in the pull request comments.
  * Follow the details link in the comment for complete information.
- * Access github_api_limit.php to get a picture of your Github api use and reset time.
+ * Access github_api_limit.php to get a picture of your Github API use and reset time.
 
 How it works
 ------------
