@@ -285,7 +285,7 @@ class GithubClient extends RestClient
     $this->logger->info("looking for bug reference in: $title");
 
     //match ~ Bug: xxx or [xxx]
-    $re = "/[Bb]ug:?\s*#?(\d+)|\[(\d+)\]/";
+    $re = "/[Bb]ug:?\s*#?(\d{6,})|\[(\d{6,})\]/";
     $matches = array();
     if (preg_match($re, $title, $matches) && count($matches) > 1) {
       //bug: match will be matches[1], [xxx] match will be matches[2]
