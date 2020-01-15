@@ -83,9 +83,9 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 	#load github org from team
 	$github_organization = $org_forge_team->getOrgName();
 	echo "GitHub Org: " . $github_organization . "\n";
-	#only work with Eclipse orgs, remove this to start handling locationtech etc.
-        if ( preg_match('/eclipse/',$github_organization) !== 1 ){
-	  echo "Not an Eclipse org, skipping \n";
+	#only work with selected orgs based on the config file.
+        if ( preg_match(GITHUB_ORG_REGEX,$github_organization) !== 1 ){
+	  echo "Not a selected org, skipping \n";
 	  continue;
         }
 	
@@ -126,10 +126,12 @@ foreach($org_forge->getTeamList() as $org_forge_team) {
 	$githubResult = $org_github_team->getCommitterList();
 	$eclipseResult = $org_forge_team->getCommitterList();
 
-	//echo "Github members: \n";
-	//print_r($githubResult);
-	//echo "Eclipse members: \n";
-	//print_r($eclipseResult);  
+#	if ( preg_match(GITHUB_ORG_REGEX,$github_organization) == 1 ) {
+#  	  echo "Github members: \n";
+#	  print_r($githubResult);
+#	  echo "Eclipse members: \n";
+#	  print_r($eclipseResult);   
+#        }
 
 	echo "\n[Info] checking $repoName...\n";
 	$toBeRemoved = compare($githubResult, $eclipseResult);

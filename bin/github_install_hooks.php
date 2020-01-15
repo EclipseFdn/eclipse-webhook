@@ -59,9 +59,9 @@ $payload->config->url = WEBHOOK_SERVICE_URL;
 foreach( $org_github->getOrgs() as $org ) {
   echo "Working with $org \n";
 
-  #only work with Eclipse orgs. Remove this to work with locationtech etc.
-  if ( preg_match('/eclipse/',$org) !== 1 ){
-    echo "Not an Eclipse org, skipping \n";
+  #only work with selected orgs based on the config file
+  if ( preg_match(GITHUB_ORG_REGEX,$github_organization) !== 1 ){
+    echo "Not a selected org, skipping \n";
     continue;
   }
 

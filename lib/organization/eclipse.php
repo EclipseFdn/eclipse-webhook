@@ -55,6 +55,14 @@ class Eclipse extends Organization {
 						if ( $teamOrg === '' && $teamRepoOrg[0] !== '' ) {
 							if($this->debug) echo "Setting org name to: $teamOrg($teamRepoOrg[0]) \n";
 							$team->setOrgName($teamRepoOrg[0]);
+							#teamnames are important and need to be updated based on the org name in order for follow on processing to find them
+							#for 'sub' orgs(eclipse-ee4j) they should simply use the 'parent' org name for the first half of the team name
+							$orgNameParts= explode("-",$teamRepoOrg[0]);
+							if ( preg_match("/$orgNameParts[0]/",$teamName) !==1 ){
+							  $teamName =preg_replace('/(.*)-(.*)/',"$orgNameParts[0]-$2",$teamName);
+							  if($this->debug) echo "TeamName<>OrgName mismatch. Setting teamname to: $teamName \n";
+							  $team->setTeamName($teamName);
+							}
 						} else if ( strcmp($teamRepoOrg[0],$teamOrg) !== 0 ) {
 							#this repo is in another org, which should be a no-no within a single project.
 							echo "[Error] $teamName has a repo in another org (got: $teamRepoOrg expected: $teamOrg.\n";
